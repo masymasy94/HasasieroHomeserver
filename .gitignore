@@ -15,7 +15,6 @@
 !homeserver/.gitignore
 !homeserver/docker-compose.yml
 !homeserver/.env.example
-!homeserver/README.md
 
 !homeserver/homepage/
 !homeserver/homepage/config/
