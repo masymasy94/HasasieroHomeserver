@@ -1,0 +1,301 @@
+networks:
+  home-net:
+    name: home-net
+
+services:
+  # === PLEX ===
+  plex:
+    image: plexinc/pms-docker
+    container_name: plex
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - TZ=Europe/Rome
+      - PLEX_UID=1000
+      - PLEX_GID=1000
+      - ADVERTISE_IP=http://192.168.3.54:32400/
+      - ALLOWED_NETWORKS=192.168.3.0/24
+    volumes:
+      - ./plex/config:/config
+      - /mnt/nas/Seagate_Backup_Plus_Drive/Film:/data/film
+      - /mnt/nas/Seagate_Backup_Plus_Drive/Film Disney:/data/film-disney
+      - /mnt/nas/Seagate_Backup_Plus_Drive/Film Horror:/data/film-horror
+      - /mnt/nas/Seagate_Backup_Plus_Drive/SerieTV:/data/serietv
+      - /mnt/nas/Seagate_Backup_Plus_Drive/Anime:/data/anime
+
+
+  # === PORTAINER ===
+  portainer:
+    image: portainer/portainer-ce
+    container_name: portainer
+    restart: unless-stopped
+    networks:
+      - home-net
+    ports:
+      - "192.168.3.54:9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./portainer/data:/data
+
+  # === HOMEPAGE (Dashboard) ===
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    networks:
+      - home-net
+    ports:
+      - "192.168.3.54:3000:3000"
+    environment:
+      - HOMEPAGE_ALLOWED_HOSTS=192.168.3.54:3000
+    volumes:
+      - ./homepage/config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  # === UPTIME KUMA (Monitoring) ===
+  uptime-kuma:
+    image: louislam/uptime-kuma
+    container_name: uptime-kuma
+    restart: unless-stopped
+    networks:
+      - home-net
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./uptime-kuma/data:/app/data
+
+  # === NGINX PROXY MANAGER ===
+  nginx-proxy-manager:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: nginx-proxy-manager
+    restart: unless-stopped
+    networks:
+      - home-net
+    ports:
+      - "192.168.3.54:80:80"
+      - "192.168.3.54:443:443"
+      - "192.168.3.54:81:81"
+    volumes:
+      - ./nginx-proxy-manager/data:/data
+      - ./nginx-proxy-manager/letsencrypt:/etc/letsencrypt
+
+  # === OLLAMA (LLM Backend) ===
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    restart: unless-stopped
+    networks:
+      - home-net
+    ports:
+      - "11434:11434"
+    environment:
+      - TZ=Europe/Rome
+      - OLLAMA_HOST=0.0.0.0
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ./ollama/data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # === OPEN WEBUI (Chat Interface) ===
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    networks:
+      - home-net
+    ports:
+      - "192.168.3.54:8080:8080"
+    environment:
+      - TZ=Europe/Rome
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_AUTH=False
+    volumes:
+      - ./open-webui/data:/app/backend/data
+    depends_on:
+      - ollama
+
+  # === TELEGRAM OLLAMA BOT (Agent) ===
+  telegram-ollama-bot:
+    build: ./telegram-ollama-bot
+    container_name: telegram-ollama-bot
+    restart: unless-stopped
+    networks:
+      - home-net
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - ALLOWED_USER_IDS=${ALLOWED_USER_IDS}
+      - DEFAULT_MODEL=qwen2.5:3b
+      - OLLAMA_URL=http://ollama:11434
+      - TZ=Europe/Rome
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc:/host/proc:ro
+    depends_on:
+      - ollama
+
+  # === HOME ASSISTANT ===
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - TZ=Europe/Rome
+    volumes:
+      - ./homeassistant/config:/config
+    privileged: true
+
+  # === NUT (Nintendo Switch Network Installer) ===
+  nut:
+    image: shawly/nut:latest
+    container_name: nut
+    restart: unless-stopped
+    networks:
+      - home-net
+    ports:
+      - "192.168.3.54:9090:9000"
+    environment:
+      - TZ=Europe/Rome
+    volumes:
+      - ./nut/conf:/nut/conf
+      - /home/masy/Desktop/Seagate_NAS/Giochi/SwitchGames:/games:ro
+
+  # === GLUETUN (VPN Gateway for Prowlarr & Torrents) ===
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    networks:
+      - home-net
+    ports:
+      # Prowlarr (routed through VPN)
+      - "192.168.3.54:9696:9696"
+      # FlareSolverr (routed through VPN)
+      - "192.168.3.54:8191:8191"
+      # qBittorrent WebUI (routed through VPN)
+      - "192.168.3.54:8085:8085"
+      # qBittorrent torrent port (routed through VPN)
+      - "6881:6881"
+      - "6881:6881/udp"
+    environment:
+      - TZ=Europe/Rome
+      - VPN_SERVICE_PROVIDER=nordvpn
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+      - SERVER_COUNTRIES=Netherlands
+    volumes:
+      - ./gluetun:/gluetun
+
+  # === PROWLARR (Indexer Manager & Search UI) ===
+  prowlarr:
+    image: linuxserver/prowlarr:latest
+    container_name: prowlarr
+    restart: unless-stopped
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
+    environment:
+      - TZ=Europe/Rome
+      - PUID=1000
+      - PGID=1000
+    volumes:
+      - ./prowlarr/config:/config
+
+  # === PROWLARR SEARCH (Custom Search UI) ===
+  prowlarr-search:
+    image: nginx:alpine
+    container_name: prowlarr-search
+    restart: unless-stopped
+    networks:
+      - home-net
+    ports:
+      - "192.168.3.54:8888:80"
+    volumes:
+      - ./prowlarr-search:/usr/share/nginx/html:ro
+      - ./prowlarr-search/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+  # === JACKETT (Torrent Indexer Proxy) ===
+  jackett:
+    image: linuxserver/jackett:latest
+    container_name: jackett
+    restart: unless-stopped
+    networks:
+      - home-net
+    ports:
+      - "192.168.3.54:9117:9117"
+    environment:
+      - TZ=Europe/Rome
+      - PUID=1000
+      - PGID=1000
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    volumes:
+      - ./jackett/config:/config
+
+  # === FLARESOLVERR (Cloudflare Bypass for Prowlarr, routed through VPN) ===
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    restart: unless-stopped
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
+    environment:
+      - TZ=Europe/Rome
+      - LOG_LEVEL=info
+
+  # === GLANCES (System & Container Monitor) ===
+  glances:
+    image: nicolargo/glances:latest
+    container_name: glances
+    restart: unless-stopped
+    networks:
+      - home-net
+    ports:
+      - "192.168.3.54:61208:61208"
+    environment:
+      - TZ=Europe/Rome
+      - GLANCES_OPT=-w -t 5
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    pid: host
+
+  # === QBITTORRENT (routed through VPN) ===
+  qbittorrent:
+    image: linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    restart: unless-stopped
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
+    environment:
+      - TZ=Europe/Rome
+      - PUID=1000
+      - PGID=1000
+      - WEBUI_PORT=8085
+    volumes:
+      - ./qbittorrent/config:/config
+      - ./qbittorrent/config/custom-cont-init.d:/custom-cont-init.d
+      - "/mnt/hdd/Torrent Downloads:/downloads"
+
+  # === WATCHTOWER (Auto-update) ===
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_SCHEDULE=0 4 * * *

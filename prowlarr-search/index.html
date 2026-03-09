@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prowlarr Search</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #1a1a2e; color: #e0e0e0; min-height: 100vh; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+  h1 { text-align: center; margin: 30px 0 20px; color: #00d4ff; font-size: 1.8rem; }
+  .search-bar { display: flex; gap: 10px; margin-bottom: 16px; }
+  .search-bar input {
+    flex: 1; padding: 12px 16px; font-size: 1rem; border: 1px solid #333; border-radius: 6px;
+    background: #16213e; color: #e0e0e0; outline: none;
+  }
+  .search-bar input:focus { border-color: #00d4ff; }
+  .search-bar button {
+    padding: 12px 24px; font-size: 1rem; border: none; border-radius: 6px; cursor: pointer;
+    background: #00d4ff; color: #1a1a2e; font-weight: 600;
+  }
+  .search-bar button:hover { background: #00b8d9; }
+  .search-bar button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .search-bar select {
+    padding: 12px 10px; font-size: 0.95rem; border: 1px solid #333; border-radius: 6px;
+    background: #16213e; color: #e0e0e0; outline: none; cursor: pointer; min-width: 140px;
+  }
+  .search-bar select:focus { border-color: #00d4ff; }
+  .search-bar select option { background: #16213e; color: #e0e0e0; }
+
+  .indexer-filter { margin-bottom: 20px; }
+  .indexer-toggle {
+    display: flex; align-items: center; gap: 8px; cursor: pointer; color: #aaa;
+    font-size: 0.9rem; padding: 6px 0; user-select: none;
+  }
+  .indexer-toggle:hover { color: #00d4ff; }
+  .indexer-toggle .arrow { font-size: 0.7rem; transition: transform 0.2s; display: inline-block; }
+  .indexer-toggle .arrow.open { transform: rotate(90deg); }
+  .indexer-panel { display: none; margin-top: 8px; }
+  .indexer-panel.open { display: block; }
+  .indexer-section { margin-bottom: 12px; }
+  .indexer-section-title { font-size: 0.8rem; color: #00d4ff; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .indexer-actions { display: flex; gap: 12px; margin-bottom: 10px; }
+  .indexer-actions button {
+    background: none; border: 1px solid #333; color: #aaa; padding: 4px 12px;
+    border-radius: 4px; cursor: pointer; font-size: 0.8rem;
+  }
+  .indexer-actions button:hover { border-color: #00d4ff; color: #00d4ff; }
+  .indexer-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+  .indexer-chip {
+    display: flex; align-items: center; gap: 5px; padding: 4px 10px;
+    background: #16213e; border: 1px solid #2a2a4a; border-radius: 4px;
+    font-size: 0.8rem; cursor: pointer; user-select: none; color: #aaa;
+    transition: all 0.15s;
+  }
+  .indexer-chip.selected { border-color: #00d4ff; color: #e0e0e0; background: #1a2744; }
+  .indexer-chip:hover { border-color: #00d4ff; }
+  .indexer-chip .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #444; transition: background 0.15s;
+  }
+  .indexer-chip.selected .dot { background: #00d4ff; }
+  .indexer-chip.selected .dot.jackett { background: #ffa94d; }
+  .indexer-chip.selected .dot.torrentz2 { background: #51cf66; }
+
+  #status { text-align: center; margin: 16px 0; color: #aaa; }
+  #status.error { color: #ff6b6b; }
+  .progress { text-align: center; margin: 4px 0 12px; color: #666; font-size: 0.85rem; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #2a2a4a; }
+  th {
+    background: #16213e; cursor: pointer; user-select: none; position: sticky; top: 0;
+    white-space: nowrap; color: #00d4ff; z-index: 1;
+  }
+  th:hover { background: #1a2744; }
+  th .arrow { margin-left: 4px; font-size: 0.75rem; }
+  tr:hover { background: #16213e44; }
+  td.title { max-width: 400px; word-break: break-word; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  th.num { text-align: right; }
+  a.dl { color: #00d4ff; text-decoration: none; }
+  a.dl:hover { text-decoration: underline; }
+  .seeders { color: #51cf66; }
+  .leechers { color: #ff6b6b; }
+  .muted { color: #666; }
+  .filter-row { text-align: center; margin-bottom: 8px; }
+  .filter-row label { cursor: pointer; color: #aaa; font-size: 0.9rem; margin: 0 10px; }
+  .filter-row input { margin-right: 6px; cursor: pointer; }
+  .indexer-tags { display: inline; }
+  .indexer-tag {
+    display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 0.7rem;
+    background: #2a2a4a; color: #aaa; margin-right: 3px;
+  }
+  .dedup-info { color: #51cf66; font-size: 0.75rem; margin-left: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Prowlarr Search</h1>
+  <div class="search-bar">
+    <input type="text" id="query" placeholder="Search torrents..." autofocus>
+    <select id="category">
+      <option value="">All Categories</option>
+      <option value="1000">Console</option>
+      <option value="1000,4050">Games (All)</option>
+      <option value="2000">Movies</option>
+      <option value="3000">Audio/Music</option>
+      <option value="4000">PC</option>
+      <option value="4050">PC Games</option>
+      <option value="5000">TV</option>
+      <option value="6000">XXX</option>
+      <option value="7000">Books</option>
+      <option value="8000">Other</option>
+    </select>
+    <button id="btn" onclick="doSearch()">Search</button>
+  </div>
+  <div class="indexer-filter">
+    <div class="indexer-toggle" onclick="togglePanel()">
+      <span class="arrow" id="panelArrow">&#9654;</span>
+      <span>Indexers (<span id="indexerCount">loading...</span>)</span>
+    </div>
+    <div class="indexer-panel" id="indexerPanel">
+      <div class="indexer-actions">
+        <button onclick="selectAll()">Select All</button>
+        <button onclick="selectNone()">Deselect All</button>
+      </div>
+      <div id="indexerSections"></div>
+    </div>
+  </div>
+  <div id="status"></div>
+  <div id="progress" class="progress"></div>
+  <div id="results"></div>
+</div>
+<script>
+const API_KEY = '853f61cd7562475aac7aead3ed13ab9a';
+const JACKETT_KEY = 'wxin5txdq1xafnbbyf5p0iwvqbshzu53';
+const BATCH_SIZE = 5;
+const PROWLARR_LIMIT = 200;
+const JACKETT_LIMIT = 200;
+const TORRENTZ2_PAGES = 5;
+const STORAGE_KEY = 'prowlarr-search-indexers-v3';
+
+// Public trackers appended to all magnet links to speed up downloads
+const PUBLIC_TRACKERS = [
+  'udp://tracker.opentrackr.org:1337/announce',
+  'udp://open.demonii.com:1337/announce',
+  'udp://open.stealth.si:80/announce',
+  'udp://exodus.desync.com:6969/announce',
+  'udp://tracker.torrent.eu.org:451/announce',
+  'udp://tracker.openbittorrent.com:6969/announce',
+  'udp://tracker.tiny-vps.com:6969/announce',
+  'udp://explodie.org:6969/announce',
+  'udp://p4p.arenabg.com:1337/announce',
+  'udp://tracker.cyberia.is:6969/announce',
+];
+
+function enrichMagnet(magnet) {
+  if (!magnet || !magnet.startsWith('magnet:')) return magnet;
+  const extra = PUBLIC_TRACKERS
+    .filter(tr => !magnet.includes(encodeURIComponent(tr)))
+    .map(tr => '&tr=' + encodeURIComponent(tr))
+    .join('');
+  return magnet + extra;
+}
+
+// TNTVillage offline database (134K releases, loaded once)
+let tntData = null;
+async function loadTntvillage() {
+  if (tntData) return tntData;
+  const res = await fetch('/tntvillage.json');
+  if (!res.ok) throw new Error('TNTVillage data not available');
+  tntData = await res.json(); // [[hash, title, description, size], ...]
+  return tntData;
+}
+
+async function searchTntvillage(query) {
+  const data = await loadTntvillage();
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const results = [];
+  for (const [hash, title, desc, size] of data) {
+    const t = (title + ' ' + desc).toLowerCase();
+    if (words.every(w => t.includes(w))) {
+      const magnet = 'magnet:?xt=urn:btih:' + hash + '&dn=' + encodeURIComponent(title);
+      results.push({
+        title, size, seeders: -1, leechers: -1, indexer: 'TNTVillage',
+        downloadUrl: '', magnetUrl: enrichMagnet(magnet), infoUrl: '',
+      });
+    }
+    if (results.length >= 200) break;
+  }
+  return results;
+}
+
+// Jackett indexers enabled by default (best for general + Italian content)
+const JACKETT_DEFAULT_ON = new Set([
+  '1337x', 'bitsearch', 'ilcorsaronero', 'ilcorsaroverde', 'kickasstorrents-to', 'kickasstorrents-ws',
+  'knaben', 'limetorrents', 'thepiratebay', 'therarbg', 'torrentgalaxyclone',
+  'torrentdownloads', 'yts', 'eztv', 'nyaasi', 'rutor'
+]);
+
+let allIndexers = [];
+let rawData = [];
+let lastQuery = '';
+let sortCol = 'seeders';
+let sortAsc = false;
+
+const cols = [
+  { key: 'title',    label: 'Title',    cls: 'title' },
+  { key: 'size',     label: 'Size',     cls: 'num',   num: true },
+  { key: 'seeders',  label: 'Seeders',  cls: 'num',   num: true },
+  { key: 'leechers', label: 'Leechers', cls: 'num',   num: true },
+  { key: 'indexer',  label: 'Indexer',   cls: '' },
+  { key: 'download', label: 'Download', cls: '' },
+];
+
+document.getElementById('query').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doSearch();
+});
+
+function getSavedSelection() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { return null; }
+}
+function saveSelection() {
+  const sel = {};
+  allIndexers.forEach(ix => { sel[ix.key] = ix.checked; });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(sel));
+}
+
+// Extract infohash from magnet URI
+function getInfohash(magnetUrl) {
+  if (!magnetUrl) return null;
+  const match = magnetUrl.match(/btih:([a-fA-F0-9]{40})/i) ||
+                magnetUrl.match(/btih:([a-zA-Z2-7]{32})/i);
+  return match ? match[1].toUpperCase() : null;
+}
+
+// Bencode parser — extracts info dict byte range for SHA1 hashing
+function bdecodeBuf(buf) {
+  const view = new Uint8Array(buf);
+  let infoStart = -1, infoEnd = -1;
+  function parse(pos) {
+    const ch = view[pos];
+    if (ch === 0x64) { // 'd'
+      const dict = {};
+      let p = pos + 1;
+      while (view[p] !== 0x65) {
+        const [key, keyEnd] = parse(p);
+        const vStart = keyEnd;
+        const [val, valEnd] = parse(keyEnd);
+        if (key === 'info') { infoStart = vStart; infoEnd = valEnd; }
+        dict[key] = val;
+        p = valEnd;
+      }
+      return [dict, p + 1];
+    }
+    if (ch === 0x6C) { // 'l'
+      const list = [];
+      let p = pos + 1;
+      while (view[p] !== 0x65) { const [val, end] = parse(p); list.push(val); p = end; }
+      return [list, p + 1];
+    }
+    if (ch === 0x69) { // 'i'
+      let p = pos + 1;
+      while (view[p] !== 0x65) p++;
+      return [parseInt(new TextDecoder().decode(view.slice(pos + 1, p)), 10), p + 1];
+    }
+    // string: len:data
+    let p = pos;
+    while (view[p] !== 0x3A) p++;
+    const len = parseInt(new TextDecoder().decode(view.slice(pos, p)), 10);
+    p++;
+    try { return [new TextDecoder('utf-8', {fatal:true}).decode(view.slice(p, p+len)), p+len]; }
+    catch { return [view.slice(p, p+len), p+len]; }
+  }
+  const [torrent] = parse(0);
+  return { torrent, infoStart, infoEnd };
+}
+
+async function torrentToMagnet(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Fetch failed');
+  // nginx intercepts 302 redirects and returns Location as body with X-Was-Redirect header
+  if (res.headers.get('X-Was-Redirect')) {
+    const loc = (await res.text()).trim();
+    if (loc.startsWith('magnet:')) return loc;
+    // Redirect was to an HTTP URL (e.g. .torrent file) — follow it
+    if (loc.startsWith('http')) return torrentToMagnet(loc);
+    throw new Error('Unknown redirect: ' + loc);
+  }
+  const ct = res.headers.get('Content-Type') || '';
+  // If HTML response, scrape for magnet links
+  if (ct.includes('text/html')) {
+    const html = await res.text();
+    const m = html.match(/magnet:\?xt=urn:btih:[^"'\s<>]+/);
+    if (m) return m[0].replace(/&amp;/g, '&');
+    throw new Error('No magnet in HTML');
+  }
+  // Otherwise treat as .torrent file
+  const buf = await res.arrayBuffer();
+  const { torrent, infoStart, infoEnd } = bdecodeBuf(buf);
+  if (infoStart < 0) throw new Error('No info dict');
+  const hashBuf = await crypto.subtle.digest('SHA-1', new Uint8Array(buf).slice(infoStart, infoEnd));
+  const hash = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  const name = typeof torrent.info?.name === 'string' ? torrent.info.name : '';
+  return 'magnet:?xt=urn:btih:' + hash + (name ? '&dn=' + encodeURIComponent(name) : '');
+}
+
+async function scrapeMagnet(pageUrl) {
+  const res = await fetch('/proxy/ext/?url=' + encodeURIComponent(pageUrl));
+  if (!res.ok) throw new Error('Scrape failed');
+  const html = await res.text();
+  const m = html.match(/magnet:\?xt=urn:btih:[^"'\s<>]+/);
+  if (m) return m[0].replace(/&amp;/g, '&');
+  throw new Error('No magnet on page');
+}
+
+async function scrapeMagnetFlare(pageUrl) {
+  const res = await fetch('/proxy/flare/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ cmd: 'request.get', url: pageUrl, maxTimeout: 60000 }),
+  });
+  if (!res.ok) throw new Error('FlareSolverr failed');
+  const data = await res.json();
+  if (data.status !== 'ok') throw new Error('FlareSolverr error');
+  const html = data.solution?.response || '';
+  const m = html.match(/magnet:\?xt=urn:btih:[^"'\s<>]+/);
+  if (m) return m[0].replace(/&amp;/g, '&');
+  throw new Error('No magnet via FlareSolverr');
+}
+
+// Auto-resolve magnets for all results missing one (3 concurrent, 1 for FlareSolverr)
+let resolveGeneration = 0;
+async function resolveAllMagnets() {
+  const gen = ++resolveGeneration;
+  const toResolve = rawData.filter(r => !r.magnetUrl && (r.downloadUrl || r.infoUrl));
+  const needFlare = [];
+
+  // Phase 1: try Jackett proxy + direct scrape (fast, 3 concurrent)
+  for (let i = 0; i < toResolve.length; i += 3) {
+    if (gen !== resolveGeneration) return;
+    const batch = toResolve.slice(i, i + 3);
+    await Promise.all(batch.map(async (r) => {
+      if (r.downloadUrl) {
+        try { r.magnetUrl = await torrentToMagnet(r.downloadUrl); return; } catch {}
+      }
+      if (r.infoUrl) {
+        try { r.magnetUrl = await scrapeMagnet(r.infoUrl); return; } catch {}
+      }
+      if (r.infoUrl) needFlare.push(r);
+      else r.magnetUrl = 'failed';
+    }));
+    if (gen === resolveGeneration) renderTable();
+  }
+
+  // Phase 2: FlareSolverr fallback for remaining (1 at a time, slow)
+  for (const r of needFlare) {
+    if (gen !== resolveGeneration) return;
+    try { r.magnetUrl = await scrapeMagnetFlare(r.infoUrl); }
+    catch { r.magnetUrl = 'failed'; }
+    if (gen === resolveGeneration) renderTable();
+  }
+}
+
+// Deduplicate results by infohash, keeping highest seeders and merging indexer names
+function deduplicateResults(results) {
+  const byHash = new Map();
+  const noHash = [];
+
+  for (const r of results) {
+    const hash = getInfohash(r.magnetUrl) || getInfohash(r.downloadUrl);
+    if (!hash) {
+      noHash.push({ ...r, indexers: [r.indexer], dedupCount: 1 });
+      continue;
+    }
+    if (byHash.has(hash)) {
+      const existing = byHash.get(hash);
+      existing.indexers.push(r.indexer);
+      existing.dedupCount++;
+      // Keep the one with more seeders
+      if (r.seeders > existing.seeders) {
+        existing.seeders = r.seeders;
+        existing.leechers = r.leechers;
+      }
+      // Keep larger size if we had none
+      if (r.size > existing.size) existing.size = r.size;
+      // Keep magnet if we didn't have one
+      if (!existing.magnetUrl && r.magnetUrl) existing.magnetUrl = r.magnetUrl;
+      if (!existing.downloadUrl && r.downloadUrl) existing.downloadUrl = r.downloadUrl;
+      if (!existing.infoUrl && r.infoUrl) existing.infoUrl = r.infoUrl;
+    } else {
+      byHash.set(hash, { ...r, indexers: [r.indexer], dedupCount: 1 });
+    }
+  }
+  return [...byHash.values(), ...noHash];
+}
+
+async function loadIndexers() {
+  allIndexers = [];
+
+  try {
+    const res = await fetch(`/api/v1/indexer?apikey=${API_KEY}`);
+    if (res.ok) {
+      const prowlarr = await res.json();
+      prowlarr
+        .filter(ix => ix.enable && ix.name.toLowerCase() !== 'jackett')
+        .forEach(ix => {
+          allIndexers.push({ key: 'p_' + ix.id, id: ix.id, name: ix.name, source: 'prowlarr', checked: true });
+        });
+    }
+  } catch {}
+
+  const jackettIndexers = [
+    "0magnet", "1337x", "52bt", "acgrip", "aniRena", "anilibria", "animetosho", "anisource",
+    "apachetorrent", "arabtorrents-com", "audiobookbay", "bangumi-moe", "bigfangroup", "bitru",
+    "bitsearch", "bludv", "blueroms", "btdirectory", "btetree", "btstate", "byrutor", "catorrent",
+    "cpasbienclone", "crackingpatching", "damagnet", "divxtotal", "dmhy", "dontorrent", "ebookbay",
+    "elitetorrent-wf", "epublibre", "extratorrent-st", "eztv", "filemood",
+    "filmeshdtorrent", "frozenlayer", "gamestorrents", "gtorrentpro",
+    "hdrtorrent", "ilcorsaronero", "ilcorsaroverde", "internetarchive", "isohunt2", "kickasstorrents-to",
+    "kickasstorrents-ws", "knaben", "limetorrents", "linuxtracker", "mactorrentsdownload",
+    "magnetcat", "magnetdownload", "magnetz", "megapeer", "mejortorrent", "mikan", "mixtapetorrent",
+    "moviesdvdr", "nekobt", "newstudio", "nipponsei", "noname-club", "nortorrent",
+    "nyaasi", "opensharing", "pctorrent", "piratesparadise", "plugintorrent",
+    "redetorrent", "rintornet", "rutor", "rutracker-ru",
+    "shanaproject", "showrss", "skidrowreload", "sosulki", "subsplease",
+    "thepiratebay", "therarbg", "tokyotosho", "torrent-pirat", "torrent9", "torrentby",
+    "torrentcore", "torrentdownload", "torrentdownloads", "torrentgalaxyclone", "torrentkitty",
+    "torrentoyunindir", "torrentproject2", "torrentqq", "torrentscsv", "torrentsome", "torrenttip",
+    "u3c3", "uindex", "uztracker", "vsthouse", "vstorrent", "vsttorrents", "wolfmax4k",
+    "world-torrent", "yts", "zamundarip", "zktorrent"
+  ];
+
+  const prowlarrNames = new Set(allIndexers.map(ix => ix.name.toLowerCase().replace(/[^a-z0-9]/g, '')));
+  jackettIndexers.forEach(jid => {
+    const normId = jid.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!prowlarrNames.has(normId)) {
+      allIndexers.push({
+        key: 'j_' + jid, id: jid, name: jid, source: 'jackett',
+        checked: JACKETT_DEFAULT_ON.has(jid)
+      });
+    }
+  });
+
+  allIndexers.push({ key: 'torrentz2', id: null, name: 'Torrentz2', source: 'torrentz2', checked: true });
+  allIndexers.push({ key: 'tntvillage', id: null, name: 'TNTVillage', source: 'tntvillage', checked: true });
+
+  const saved = getSavedSelection();
+  if (saved) {
+    allIndexers.forEach(ix => {
+      if (saved[ix.key] !== undefined) ix.checked = saved[ix.key];
+    });
+  }
+
+  renderIndexerGrid();
+}
+
+function renderIndexerGrid() {
+  const selectedCount = allIndexers.filter(ix => ix.checked).length;
+  document.getElementById('indexerCount').textContent = `${selectedCount}/${allIndexers.length} selected`;
+
+  const sections = [
+    { label: 'Prowlarr', source: 'prowlarr', dotClass: '' },
+    { label: 'Jackett', source: 'jackett', dotClass: 'jackett' },
+    { label: 'External', source: 'torrentz2', dotClass: 'torrentz2' },
+    { label: 'Offline', source: 'tntvillage', dotClass: 'torrentz2' },
+  ];
+
+  let html = '';
+  for (const sec of sections) {
+    const items = allIndexers.filter(ix => ix.source === sec.source);
+    if (items.length === 0) continue;
+    html += `<div class="indexer-section">`;
+    html += `<div class="indexer-section-title">${sec.label} (${items.filter(i=>i.checked).length}/${items.length})</div>`;
+    html += `<div class="indexer-grid">`;
+    for (const ix of items) {
+      html += `<div class="indexer-chip${ix.checked ? ' selected' : ''}" onclick="toggleIndexer('${ix.key}')">`;
+      html += `<span class="dot ${sec.dotClass}"></span>${escHtml(ix.name)}</div>`;
+    }
+    html += `</div></div>`;
+  }
+  document.getElementById('indexerSections').innerHTML = html;
+}
+
+function toggleIndexer(key) {
+  const ix = allIndexers.find(i => i.key === key);
+  if (ix) { ix.checked = !ix.checked; saveSelection(); renderIndexerGrid(); }
+}
+function selectAll() { allIndexers.forEach(ix => ix.checked = true); saveSelection(); renderIndexerGrid(); }
+function selectNone() { allIndexers.forEach(ix => ix.checked = false); saveSelection(); renderIndexerGrid(); }
+
+function togglePanel() {
+  document.getElementById('indexerPanel').classList.toggle('open');
+  document.getElementById('panelArrow').classList.toggle('open');
+}
+
+async function searchBatch(query, indexerIds, categories) {
+  const ids = indexerIds.map(id => `indexerIds=${id}`).join('&');
+  const cats = categories.length > 0 ? '&' + categories.map(c => `categories=${c}`).join('&') : '';
+  const url = `/api/v1/search?query=${encodeURIComponent(query)}&type=search&limit=${PROWLARR_LIMIT}&${ids}${cats}&apikey=${API_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  return await res.json();
+}
+
+async function searchJackett(query, indexerId, categories) {
+  try {
+    const cats = categories.length > 0 ? '&' + categories.map(c => `Category[]=${c}`).join('&') : '';
+    const url = `/jackett/indexers/${indexerId}/results?apikey=${JACKETT_KEY}&Query=${encodeURIComponent(query)}&_results=${JACKETT_LIMIT}${cats}`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.Results || []).map(r => ({
+      title: r.Title || '—',
+      size: r.Size || 0,
+      seeders: r.Seeders ?? -1,
+      leechers: r.Peers != null ? r.Peers - (r.Seeders || 0) : -1,
+      indexer: r.Tracker || indexerId,
+      downloadUrl: (r.Link || '').replace(/^https?:\/\/jackett:9117\/dl\//, '/jackett-dl/'),
+      magnetUrl: r.MagnetUri || '',
+      infoUrl: r.Details || r.Comments || '',
+    }));
+  } catch { return []; }
+}
+
+function parseTorrentz2Page(html) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const results = [];
+  doc.querySelectorAll('.bg-white.rounded-lg.shadow-sm.border').forEach(card => {
+    const titleEl = card.querySelector('h3 a, h5 a, h4 a');
+    if (!titleEl) return;
+    const title = titleEl.textContent.trim();
+    if (!title) return;
+    const magnetEl = card.querySelector('a[href^="magnet:"]');
+    const magnetRaw = magnetEl ? magnetEl.getAttribute('href') : '';
+    const magnet = magnetRaw.replace(/&amp;/g, '&');
+    const sizeEl = card.querySelector('.fa-download');
+    let sizeText = sizeEl ? sizeEl.closest('span')?.textContent.trim() || '' : '';
+    const size = parseSize(sizeText);
+    let seeders = -1, leechers = -1;
+    const greenSpan = card.querySelector('.text-green-600 .font-medium, .text-green-500 .font-medium');
+    const redSpan = card.querySelector('.text-red-600 .font-medium, .text-red-500 .font-medium');
+    if (greenSpan) seeders = parseInt(greenSpan.textContent.replace(/,/g, '')) || 0;
+    if (redSpan) leechers = parseInt(redSpan.textContent.replace(/,/g, '')) || 0;
+    results.push({ title, size, seeders, leechers, indexer: 'Torrentz2', downloadUrl: '', magnetUrl: magnet, infoUrl: '' });
+  });
+  return results;
+}
+
+async function searchTorrentz2(query) {
+  const allResults = [];
+  const pagePromises = [];
+  for (let p = 1; p <= TORRENTZ2_PAGES; p++) {
+    pagePromises.push(
+      fetch(`/proxy/torrentz2/search?q=${encodeURIComponent(query)}&sortBy=seeders&order=desc&page=${p}`)
+        .then(res => res.ok ? res.text() : '')
+        .then(html => html ? parseTorrentz2Page(html) : [])
+        .catch(() => [])
+    );
+  }
+  const pages = await Promise.all(pagePromises);
+  for (const results of pages) allResults.push(...results);
+  return allResults;
+}
+
+function parseSize(str) {
+  if (!str) return 0;
+  const match = str.match(/([\d.]+)\s*(TB|GB|MB|KB|B)/i);
+  if (!match) return 0;
+  const val = parseFloat(match[1]);
+  const unit = match[2].toUpperCase();
+  const mult = { B: 1, KB: 1024, MB: 1024**2, GB: 1024**3, TB: 1024**4 };
+  return Math.round(val * (mult[unit] || 0));
+}
+
+async function doSearch() {
+  const q = document.getElementById('query').value.trim();
+  if (!q) return;
+
+  const catVal = document.getElementById('category').value;
+  const categories = catVal ? catVal.split(',').map(c => c.trim()) : [];
+
+  const selProwlarr = allIndexers.filter(ix => ix.checked && ix.source === 'prowlarr');
+  const selJackett = allIndexers.filter(ix => ix.checked && ix.source === 'jackett');
+  const selTz2 = allIndexers.find(ix => ix.key === 'torrentz2')?.checked || false;
+  const selTnt = allIndexers.find(ix => ix.key === 'tntvillage')?.checked || false;
+
+  if (selProwlarr.length === 0 && selJackett.length === 0 && !selTz2 && !selTnt) {
+    document.getElementById('status').className = 'error';
+    document.getElementById('status').textContent = 'No indexers selected';
+    return;
+  }
+
+  const btn = document.getElementById('btn');
+  const status = document.getElementById('status');
+  const progress = document.getElementById('progress');
+  btn.disabled = true;
+  status.className = '';
+  progress.textContent = '';
+  document.getElementById('results').innerHTML = '';
+  rawData = [];
+  lastQuery = q;
+
+  const prowlarrBatchCount = selProwlarr.length > 0 ? Math.ceil(selProwlarr.length / BATCH_SIZE) : 0;
+  const jackettBatchCount = selJackett.length > 0 ? Math.ceil(selJackett.length / BATCH_SIZE) : 0;
+  const totalSources = prowlarrBatchCount + jackettBatchCount + (selTz2 ? 1 : 0) + (selTnt ? 1 : 0);
+  let completed = 0;
+
+  const parts = [];
+  if (selProwlarr.length) parts.push(`${selProwlarr.length} Prowlarr`);
+  if (selJackett.length) parts.push(`${selJackett.length} Jackett`);
+  if (selTz2) parts.push('Torrentz2');
+  if (selTnt) parts.push('TNTVillage');
+  status.textContent = `Searching ${parts.join(' + ')}...`;
+
+  try {
+    const promises = [];
+
+    if (selProwlarr.length > 0) {
+      const ids = selProwlarr.map(ix => ix.id);
+      for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+        const batch = ids.slice(i, i + BATCH_SIZE);
+        promises.push(
+          searchBatch(q, batch, categories).then(results => {
+            rawData.push(...results.map(r => ({
+              title: r.title || r.sortTitle || '—', size: r.size || 0,
+              seeders: r.seeders ?? -1, leechers: r.leechers ?? -1,
+              indexer: r.indexer || '—', downloadUrl: r.downloadUrl || '',
+              magnetUrl: r.magnetUrl || '', infoUrl: r.infoUrl || '',
+            })).filter(r => matchesQuery(r.title)));
+            completed++;
+            progress.textContent = `${completed}/${totalSources} sources done — ${rawData.length} raw results`;
+            renderTable();
+          }).catch(() => { completed++; })
+        );
+      }
+    }
+
+    if (selJackett.length > 0) {
+      for (let i = 0; i < selJackett.length; i += BATCH_SIZE) {
+        const batch = selJackett.slice(i, i + BATCH_SIZE);
+        promises.push(
+          Promise.all(batch.map(ix => searchJackett(q, ix.id, categories))).then(batchResults => {
+            batchResults.forEach(results => rawData.push(...results.filter(r => matchesQuery(r.title))));
+            completed++;
+            progress.textContent = `${completed}/${totalSources} sources done — ${rawData.length} raw results`;
+            renderTable();
+          }).catch(() => { completed++; })
+        );
+      }
+    }
+
+    if (selTz2) {
+      promises.push(
+        searchTorrentz2(q).then(results => {
+          rawData.push(...results.filter(r => matchesQuery(r.title)));
+          completed++;
+          progress.textContent = `${completed}/${totalSources} sources done — ${rawData.length} raw results`;
+          renderTable();
+        }).catch(() => { completed++; })
+      );
+    }
+
+    if (selTnt) {
+      promises.push(
+        searchTntvillage(q).then(results => {
+          rawData.push(...results.filter(r => matchesQuery(r.title)));
+          completed++;
+          progress.textContent = `${completed}/${totalSources} sources done — ${rawData.length} raw results`;
+          renderTable();
+        }).catch(() => { completed++; })
+      );
+    }
+
+    await Promise.all(promises);
+    progress.textContent = '';
+    updateStatus();
+    resolveAllMagnets();
+  } catch (err) {
+    status.className = 'error';
+    status.textContent = 'Error: ' + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function matchesQuery(title) {
+  const t = title.toLowerCase();
+  return lastQuery.toLowerCase().split(/\s+/).filter(Boolean).every(w => t.includes(w));
+}
+
+function getDisplayData() {
+  const dedup = document.getElementById('dedupToggle')?.checked ?? true;
+  return dedup ? deduplicateResults(rawData) : rawData.map(r => ({ ...r, indexers: [r.indexer], dedupCount: 1 }));
+}
+
+function updateStatus() {
+  const status = document.getElementById('status');
+  const dedup = document.getElementById('dedupToggle')?.checked ?? true;
+  const dedupResults = dedup ? deduplicateResults(rawData) : rawData;
+  const dedupCount = rawData.length - dedupResults.length;
+  status.className = '';
+  let text = `${dedupResults.length} result${dedupResults.length !== 1 ? 's' : ''}`;
+  if (dedupCount > 0) text += ` (${dedupCount} duplicates merged)`;
+  status.textContent = text;
+}
+
+function fmtSize(bytes) {
+  if (!bytes || bytes <= 0) return '—';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let i = 0, s = bytes;
+  while (s >= 1024 && i < units.length - 1) { s /= 1024; i++; }
+  return s.toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
+}
+
+function sort(col) {
+  if (sortCol === col) { sortAsc = !sortAsc; }
+  else { sortCol = col; sortAsc = col === 'title' || col === 'indexer'; }
+  renderTable();
+}
+
+function renderTable() {
+  const displayData = getDisplayData();
+
+  const sorted = [...displayData].sort((a, b) => {
+    let va = a[sortCol], vb = b[sortCol];
+    if (typeof va === 'string') va = va.toLowerCase();
+    if (typeof vb === 'string') vb = vb.toLowerCase();
+    if (va < vb) return sortAsc ? -1 : 1;
+    if (va > vb) return sortAsc ? 1 : -1;
+    return 0;
+  });
+
+  updateStatus();
+
+  const dedup = document.getElementById('dedupToggle')?.checked ?? true;
+
+  let html = '<div class="filter-row">';
+  html += `<label><input type="checkbox" id="dedupToggle" onchange="renderTable()"${dedup ? ' checked' : ''}> Merge duplicates</label>`;
+  html += '</div>';
+
+  html += '<table><thead><tr>';
+  for (const c of cols) {
+    const arrow = sortCol === c.key ? (sortAsc ? '\u25B2' : '\u25BC') : '';
+    const numCls = c.num ? ' class="num"' : '';
+    html += `<th${numCls} onclick="sort('${c.key}')">${c.label}<span class="arrow">${arrow}</span></th>`;
+  }
+  html += '</tr></thead><tbody>';
+
+  for (const r of sorted) {
+    let dlCell;
+    if (r.magnetUrl && r.magnetUrl !== 'failed') {
+      dlCell = `<a class="dl" href="${escHtml(enrichMagnet(r.magnetUrl))}">Magnet</a>`;
+    } else if (r.magnetUrl === 'failed') {
+      dlCell = '<span class="muted" style="color:#ff6b6b">N/A</span>';
+    } else if (r.downloadUrl || r.infoUrl) {
+      dlCell = '<span class="muted" style="color:#ffa94d">...</span>';
+    } else {
+      dlCell = '<span class="muted">—</span>';
+    }
+    const titleCell = r.infoUrl
+      ? `<a class="dl" href="${escHtml(r.infoUrl)}" target="_blank" rel="noopener">${escHtml(r.title)}</a>`
+      : escHtml(r.title);
+
+    // Indexer column: show unique indexer names
+    const uniqueIndexers = [...new Set(r.indexers || [r.indexer])];
+    let indexerHtml;
+    if (uniqueIndexers.length <= 2) {
+      indexerHtml = uniqueIndexers.map(n => `<span class="indexer-tag">${escHtml(n)}</span>`).join('');
+    } else {
+      indexerHtml = `<span class="indexer-tag">${escHtml(uniqueIndexers[0])}</span>`;
+      indexerHtml += `<span class="indexer-tag">+${uniqueIndexers.length - 1} more</span>`;
+    }
+
+    html += `<tr><td class="title">${titleCell}</td><td class="num">${fmtSize(r.size)}</td>`;
+    html += `<td class="num seeders">${r.seeders >= 0 ? r.seeders : '—'}</td>`;
+    html += `<td class="num leechers">${r.leechers >= 0 ? r.leechers : '—'}</td>`;
+    html += `<td>${indexerHtml}</td><td>${dlCell}</td></tr>`;
+  }
+  html += '</tbody></table>';
+  document.getElementById('results').innerHTML = html;
+}
+
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+loadIndexers();
+</script>
+</body>
+</html>
