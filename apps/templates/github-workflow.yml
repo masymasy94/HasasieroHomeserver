@@ -1,0 +1,93 @@
+# .github/workflows/deploy.yml — Deploy to homeserver on RELEASE commit
+#
+# Triggers when a push to the configured branch contains RELEASE in the commit message.
+# Example: git commit -m "v1.2 RELEASE - new campaign feature"
+#
+# Shows deployment status in GitHub UI (Actions tab + Environments page).
+
+name: Deploy to Homeserver
+
+on:
+  push:
+    branches: [develop]
+
+env:
+  # UPDATE THESE for your app:
+  APP_NAME: my-app
+  REPO_URL: https://github.com/${{ github.repository }}.git
+  # UPDATE THIS to match your APPS_ROOT:
+  APPS_ROOT: /path/to/apps
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    if: contains(github.event.head_commit.message, 'RELEASE')
+    environment:
+      name: homeserver
+      url: http://my-app.local
+
+    steps:
+      - name: Deploy or update
+        id: deploy
+        run: |
+          echo "::group::Deploy output"
+          ${APPS_ROOT}/scripts/ci-deploy.sh "$REPO_URL" "$APP_NAME" 2>&1 | tee /tmp/deploy-${APP_NAME}.log
+          echo "::endgroup::"
+
+      - name: Collect status
+        id: status
+        if: always()
+        run: |
+          COMPOSE="${APPS_ROOT}/deployments/${APP_NAME}/docker-compose.deploy.yml"
+          if [ -f "$COMPOSE" ]; then
+            TOTAL=$(docker compose -f "$COMPOSE" -p "$APP_NAME" ps -q 2>/dev/null | wc -l)
+            RUNNING=$(docker compose -f "$COMPOSE" -p "$APP_NAME" ps --status running -q 2>/dev/null | wc -l)
+            SERVICES=$(docker compose -f "$COMPOSE" -p "$APP_NAME" ps --format "table {{.Name}}\t{{.Status}}" 2>/dev/null || echo "N/A")
+          else
+            TOTAL=0
+            RUNNING=0
+            SERVICES="No compose file found"
+          fi
+          echo "total=$TOTAL" >> "$GITHUB_OUTPUT"
+          echo "running=$RUNNING" >> "$GITHUB_OUTPUT"
+          {
+            echo "services<<EOF"
+            echo "$SERVICES"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Write summary
+        if: always()
+        run: |
+          echo "## Deployment: \`${APP_NAME}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${{ steps.deploy.outcome }}" == "success" ]; then
+            echo "> **Status:** Deployed successfully" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "> **Status:** Deployment failed" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Detail | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| App | \`${APP_NAME}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| URL | http://${APP_NAME}.local |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Branch | \`${{ github.ref_name }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Commit | \`${{ github.sha }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Containers | ${{ steps.status.outputs.running }}/${{ steps.status.outputs.total }} running |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Triggered by | ${{ github.actor }} |" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Containers" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.status.outputs.services }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${{ steps.deploy.outcome }}" != "success" ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "### Deploy log (last 30 lines)" >> "$GITHUB_STEP_SUMMARY"
+            echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+            tail -30 /tmp/deploy-${APP_NAME}.log >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || echo "No log available" >> "$GITHUB_STEP_SUMMARY"
+            echo "\`\`\`" >> "$GITHUB_STEP_SUMMARY"
+          fi

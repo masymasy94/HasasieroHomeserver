@@ -1,0 +1,54 @@
+# ========================================
+# Ignore ALL runtime data and volumes
+# ========================================
+
+# Ignore everything by default
+*
+
+# ========================================
+# Whitelist only config files we want to track
+# ========================================
+
+# Git and Docker Compose
+!.gitignore
+!docker-compose.yml
+
+# Homepage dashboard config
+!homepage/
+!homepage/config/
+!homepage/config/*.yaml
+
+# Prowlarr Search (custom search UI)
+!prowlarr-search/
+!prowlarr-search/index.html
+!prowlarr-search/nginx.conf
+
+# NUT config
+!nut/
+!nut/conf/
+!nut/conf/*.conf
+
+# Jackett custom Cardigann definitions (no credentials)
+!jackett/
+!jackett/config/
+!jackett/config/cardigann/
+!jackett/config/cardigann/definitions/
+!jackett/config/cardigann/definitions/*.yml
+
+# ========================================
+# Explicitly exclude secrets & heavy data
+# ========================================
+*.json
+*.log
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.pem
+*.key
+*.cert
+**/__pycache__/
+**/node_modules/
+**/cache/
+**/data/
+**/DataProtection/

@@ -1,0 +1,82 @@
+---
+- Infrastructure:
+    - Portainer:
+        icon: portainer
+        href: http://192.168.3.54:9000
+        description: Container Management
+        server: local
+        container: portainer
+    - Nginx Proxy Manager:
+        icon: nginx-proxy-manager
+        href: http://192.168.3.54:81
+        description: Reverse Proxy
+        server: local
+        container: nginx-proxy-manager
+    - Uptime Kuma:
+        icon: uptime-kuma
+        href: http://192.168.3.54:3001
+        description: Monitoring
+        server: local
+        container: uptime-kuma
+    - Glances:
+        icon: glances
+        href: http://192.168.3.54:61208
+        description: System & Container Monitor
+        server: local
+        container: glances
+
+- Media:
+    - Plex:
+        icon: plex
+        href: http://192.168.3.54:32400/web
+        description: Media Server
+        server: local
+        container: plex
+    - Jellyfin:
+        icon: jellyfin
+        href: http://192.168.3.54:8096
+        description: Media Server
+        server: local
+        container: jellyfin
+    - Prowlarr Search:
+        icon: prowlarr
+        href: http://192.168.3.54:8888
+        description: Torrent Search
+        server: local
+        container: prowlarr-search
+
+- Smart Home:
+    - Home Assistant:
+        icon: home-assistant
+        href: http://192.168.3.54:8123
+        description: Home Automation
+        server: local
+        container: homeassistant
+
+- Gaming:
+    - NUT:
+        icon: nintendo-switch
+        href: http://192.168.3.54:9090
+        description: Switch Game Manager
+        server: local
+        container: nut
+
+- AI:
+    - Open WebUI:
+        icon: open-webui
+        href: http://192.168.3.54:8080
+        description: Chat Interface
+        server: local
+        container: open-webui
+    - Ollama:
+        icon: ollama
+        href: http://192.168.3.54:11434
+        description: LLM Backend
+        server: local
+        container: ollama
+    - Stable Diffusion Forge:
+        icon: stable-diffusion
+        href: http://192.168.3.54:7860
+        description: Image Generation
+        server: local
+        container: stable-diffusion-forge

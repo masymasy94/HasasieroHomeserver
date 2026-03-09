@@ -1,0 +1,61 @@
+networks:
+  apps-infra:
+    name: apps-infra
+
+services:
+  # === Docker Registry (local image cache) ===
+  registry:
+    image: registry:2
+    container_name: apps-registry
+    restart: unless-stopped
+    networks:
+      - apps-infra
+    ports:
+      - "5000:5000"
+    volumes:
+      - registry-data:/var/lib/registry
+
+  # === Self-Hosted GitHub Actions Runner (multi-repo) ===
+  # Automatically discovers all repos for GITHUB_USER and runs one
+  # runner process per repo. Restarts when new repos are detected.
+  # 1. Create infrastructure/secrets/access_token with your GitHub PAT
+  # 2. Set GITHUB_USER in infrastructure/.env
+  # 3. Start: docker compose -f infrastructure/docker-compose.yml --profile runner up -d
+  runner:
+    build:
+      context: .
+      dockerfile: runner.Dockerfile
+    image: apps-github-runner:latest
+    container_name: apps-github-runner
+    restart: unless-stopped
+    network_mode: host
+    security_opt:
+      - apparmor:unconfined
+    environment:
+      - GITHUB_USER=${GITHUB_USER:-masymasy94}
+      - RUNNER_NAME_PREFIX=homeserver
+      - LABELS=self-hosted,Linux,X64,homeserver
+      - POLL_INTERVAL=${POLL_INTERVAL:-300}
+      - DISABLE_AUTO_UPDATE=true
+      - PATH=${HOME}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    secrets:
+      - access_token
+    volumes:
+      # Docker socket — so runner can manage containers on the host
+      - /var/run/docker.sock:/var/run/docker.sock
+      # D-Bus socket — so nmcli can manage host IP aliases via NetworkManager
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+      # Mount apps dir at SAME host path — critical for docker compose
+      # build contexts and file paths to resolve correctly on the host daemon
+      - /home/masy/Desktop/docker/apps:/home/masy/Desktop/docker/apps
+      # yq binary
+      - ${HOME}/bin:${HOME}/bin:ro
+    profiles:
+      - runner
+
+secrets:
+  access_token:
+    file: ./secrets/access_token
+
+volumes:
+  registry-data:

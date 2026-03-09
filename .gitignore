@@ -1,62 +1,119 @@
 # ========================================
-# Ignore ALL runtime data and volumes
+# Root .gitignore — whitelist approach
 # ========================================
 
 # Ignore everything by default
 *
 
+# Allow subdirectories
+!homeserver/
+!apps/
+
 # ========================================
-# Whitelist only config files we want to track
+# homeserver/ — self-hosted services stack
+# ========================================
+!homeserver/.gitignore
+!homeserver/docker-compose.yml
+!homeserver/.env.example
+!homeserver/README.md
+
+!homeserver/homepage/
+!homeserver/homepage/config/
+!homeserver/homepage/config/*.yaml
+
+!homeserver/prowlarr-search/
+!homeserver/prowlarr-search/index.html
+!homeserver/prowlarr-search/nginx.conf
+!homeserver/prowlarr-search/config.js.example
+
+!homeserver/nut/
+!homeserver/nut/conf/
+!homeserver/nut/conf/*.conf
+
+!homeserver/jackett/
+!homeserver/jackett/config/
+!homeserver/jackett/config/cardigann/
+!homeserver/jackett/config/cardigann/definitions/
+!homeserver/jackett/config/cardigann/definitions/*.yml
+
+!homeserver/telegram-ollama-bot/
+!homeserver/telegram-ollama-bot/bot.py
+!homeserver/telegram-ollama-bot/requirements.txt
+!homeserver/telegram-ollama-bot/Dockerfile
+!homeserver/telegram-ollama-bot/config.env.example
+
+!homeserver/github-runner/
+!homeserver/github-runner/Dockerfile
+!homeserver/github-runner/multi-runner-entrypoint.sh
+!homeserver/github-runner/entrypoint-wrapper.sh
+
+# ========================================
+# apps/ — multi-app deployment platform
 # ========================================
 
-# Git and Docker Compose
-!.gitignore
-!docker-compose.yml
-!.env.example
-!README.md
+# Scripts
+!apps/scripts/
+!apps/scripts/*.sh
+!apps/scripts/lib/
+!apps/scripts/lib/*.sh
+
+# Templates
+!apps/templates/
+!apps/templates/*
+
+# Infrastructure (runner, network setup)
+!apps/infrastructure/
+!apps/infrastructure/docker-compose.yml
+!apps/infrastructure/runner.Dockerfile
+!apps/infrastructure/multi-runner-entrypoint.sh
+!apps/infrastructure/entrypoint-wrapper.sh
+!apps/infrastructure/setup-network.sh
+
+# Config (no secrets)
+!apps/config/
+!apps/config/apps.conf
+!apps/config/settings.conf.example
 
 # Homepage dashboard config
-!homepage/
-!homepage/config/
-!homepage/config/*.yaml
+!apps/homepage/
+!apps/homepage/config/
+!apps/homepage/config/*.yaml
+!apps/homepage/config/custom.css
+!apps/homepage/config/custom.js
 
-# Prowlarr Search (custom search UI)
-!prowlarr-search/
-!prowlarr-search/index.html
-!prowlarr-search/nginx.conf
-!prowlarr-search/config.js.example
+# Prowlarr Search
+!apps/prowlarr-search/
+!apps/prowlarr-search/index.html
+!apps/prowlarr-search/nginx.conf
 
 # NUT config
-!nut/
-!nut/conf/
-!nut/conf/*.conf
+!apps/nut/
+!apps/nut/conf/
+!apps/nut/conf/*.conf
 
-# Jackett custom Cardigann definitions (no credentials)
-!jackett/
-!jackett/config/
-!jackett/config/cardigann/
-!jackett/config/cardigann/definitions/
-!jackett/config/cardigann/definitions/*.yml
+# Jackett definitions
+!apps/jackett/
+!apps/jackett/cardigann-definitions/
+!apps/jackett/cardigann-definitions/*.yml
 
-# Telegram Ollama Bot
-!telegram-ollama-bot/
-!telegram-ollama-bot/bot.py
-!telegram-ollama-bot/requirements.txt
-!telegram-ollama-bot/Dockerfile
-!telegram-ollama-bot/config.env.example
+# Services gitignore template
+!apps/services.gitignore
 
-# GitHub Actions Runner
-!github-runner/
-!github-runner/Dockerfile
-!github-runner/multi-runner-entrypoint.sh
-!github-runner/entrypoint-wrapper.sh
+# Root files
+!.gitignore
+!README.md
 
 # ========================================
 # Explicitly exclude secrets & heavy data
 # ========================================
 .env
+*.env
 config.env
+settings.conf
+**/secrets/
+**/deployments/
 *.json
+*.json.gz
 *.log
 *.db
 *.db-wal

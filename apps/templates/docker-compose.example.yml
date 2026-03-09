@@ -1,0 +1,50 @@
+# Example docker-compose.yml for apps compatible with the deploy system
+#
+# Key points:
+# - deploy.sh will STRIP all ports: sections (no host binding needed)
+# - deploy.sh will auto-detect the frontend service (traefik/nginx/web/etc.)
+# - Internal service-to-service communication uses Docker's default bridge network
+# - The frontend gets connected to apps-proxy for NPM routing
+
+services:
+  # Entry point — this will be auto-detected as the frontend
+  web:
+    image: nginx:alpine
+    ports:
+      - "80:80"      # Will be stripped by deploy.sh
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+
+  # Backend API
+  api:
+    build: ./api
+    ports:
+      - "3000:3000"  # Will be stripped by deploy.sh
+    environment:
+      - DATABASE_URL=postgres://app:secret@db:5432/app
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - db
+      - redis
+
+  # Database — no ports exposed, only reachable internally
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=app
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  # Cache — no ports exposed, only reachable internally
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+
+volumes:
+  db-data:
+  redis-data:

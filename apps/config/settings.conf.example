@@ -1,0 +1,44 @@
+# Apps Infrastructure - Global Settings
+# ======================================
+
+# Network mode: "wifi" (NPM proxy) or "macvlan" (dedicated IPs)
+NETWORK_MODE="wifi"
+
+# Base paths
+APPS_ROOT="/home/masy/Desktop/docker/apps"
+DEPLOYMENTS_DIR="${APPS_ROOT}/deployments"
+APPS_CONF="${APPS_ROOT}/config/apps.conf"
+
+# NPM (Nginx Proxy Manager) API
+NPM_API_URL="http://localhost:81/api"
+NPM_API_EMAIL="your@email.com"
+NPM_API_PASSWORD="changeme"
+
+# Domain suffix for apps (e.g., dndproject.local)
+DOMAIN_SUFFIX="local"
+
+# Server LAN IP (for DNS/hosts entries)
+SERVER_IP="192.168.3.54"
+
+# Default git branch to clone/pull
+GIT_BRANCH="develop"
+
+# Docker proxy network (shared between NPM and apps)
+PROXY_NETWORK="apps-proxy"
+
+# NPM container name (from homeserver stack)
+NPM_CONTAINER="nginx-proxy-manager"
+
+# IP alias settings (dedicated LAN IP per app)
+IP_ALIAS_ENABLED="true"
+IP_ALIAS_BASE="192.168.3.200"       # First app gets .200, second .201, etc.
+IP_ALIAS_NETMASK="24"
+# Interface and connection are auto-detected at runtime (see ip-alias.sh)
+
+# Macvlan settings (future, when Ethernet is connected)
+MACVLAN_NETWORK="apps-macvlan"
+MACVLAN_INTERFACE="enp3s0"
+MACVLAN_SUBNET="192.168.3.0/24"
+MACVLAN_GATEWAY="192.168.3.1"
+MACVLAN_IP_RANGE="192.168.3.200/27"  # .200-.231
+MACVLAN_BASE_IP="192.168.3.200"

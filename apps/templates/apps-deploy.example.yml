@@ -1,0 +1,10 @@
+# .apps-deploy.yml — Place this in your repo root to override frontend auto-detection
+#
+# If deploy.sh can't correctly identify which service is the entry point,
+# add this file to your project to specify it explicitly.
+
+# The service name that receives external traffic (must match a service in docker-compose.yml)
+frontend_service: traefik
+
+# The port the frontend listens on inside the container
+frontend_port: 80
