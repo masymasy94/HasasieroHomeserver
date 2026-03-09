@@ -84,6 +84,7 @@
 !apps/prowlarr-search/
 !apps/prowlarr-search/index.html
 !apps/prowlarr-search/nginx.conf
+!apps/prowlarr-search/tntvillage.json
 
 # NUT config
 !apps/nut/
@@ -112,6 +113,7 @@ settings.conf
 **/secrets/
 **/deployments/
 *.json
+!apps/prowlarr-search/tntvillage.json
 *.json.gz
 *.log
 *.db
