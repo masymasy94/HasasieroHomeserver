@@ -24,6 +24,7 @@
 !prowlarr-search/
 !prowlarr-search/index.html
 !prowlarr-search/nginx.conf
+!prowlarr-search/config.js.example
 
 # NUT config
 !nut/
