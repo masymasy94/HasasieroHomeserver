@@ -13,6 +13,7 @@
 !.gitignore
 !docker-compose.yml
 !.env.example
+!README.md
 
 # Homepage dashboard config
 !homepage/
