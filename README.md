@@ -118,6 +118,16 @@ All secrets are stored in a single `.env` file at the root, which Docker Compose
 
 Service-specific settings (timezone, ports, models) are defined directly in `docker-compose.yml`. All services use `TZ=Europe/Rome`.
 
+## CI/CD
+
+The **GitHub Runner** is a self-hosted Actions runner that auto-discovers all repos for the configured GitHub user and registers one runner per repo. It starts only with the `runner` profile:
+
+```bash
+docker compose --profile runner up -d
+```
+
+Repos with a deploy workflow (e.g. Hasasierofy) can trigger deploys by including `RELEASE` in the commit message. The runner picks up the job and runs the deploy script on the homeserver directly.
+
 ## Updating
 
 [Watchtower](https://containrrr.dev/watchtower/) runs daily at 04:00 and automatically pulls new images and recreates containers. To update manually:
