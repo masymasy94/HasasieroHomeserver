@@ -1,10 +1,10 @@
 # Homeserver
 
 ![Docker](https://img.shields.io/badge/Docker_Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![Services](https://img.shields.io/badge/Services-18-green?style=for-the-badge)
+![Services](https://img.shields.io/badge/Services-20-green?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
 
-A single `docker-compose.yml` stack running 18 self-hosted services on a home server, with VPN-routed torrenting, GPU-accelerated LLM inference, media serving, home automation, and a centralized dashboard.
+A single `docker-compose.yml` stack running 20 self-hosted services on a home server, with VPN-routed torrenting, GPU-accelerated LLM inference, media serving, home automation, CI/CD, and a centralized dashboard.
 
 ## Services
 
@@ -27,6 +27,8 @@ A single `docker-compose.yml` stack running 18 self-hosted services on a home se
 | **FlareSolverr** | `8191` | Cloudflare bypass (VPN-routed) |
 | **qBittorrent** | `8085` | Torrent client (VPN-routed) |
 | **Glances** | `61208` | Real-time system & container monitor |
+| **Registry** | `5000` | Local Docker image registry |
+| **GitHub Runner** | — | Self-hosted GitHub Actions runner (multi-repo) |
 | **Watchtower** | — | Automatic nightly image updates |
 
 ## Network Architecture
@@ -36,13 +38,14 @@ HOST (192.168.3.54)
 │
 ├── Host Network
 │   ├── Plex (32400)
-│   └── Home Assistant (8123)
+│   ├── Home Assistant (8123)
+│   └── GitHub Runner
 │
 ├── home-net (bridge)
 │   ├── Portainer, Homepage, Uptime Kuma, Glances
 │   ├── Nginx Proxy Manager (80, 443, 81)
 │   ├── Ollama → Open WebUI, Telegram Bot
-│   ├── Jackett, Prowlarr Search, NUT
+│   ├── Jackett, Prowlarr Search, NUT, Registry (5000)
 │   │
 │   └── Gluetun VPN (NordVPN WireGuard, Netherlands)
 │       ├── Prowlarr (9696)
@@ -76,6 +79,7 @@ Services behind Gluetun use `network_mode: "service:gluetun"` and share its VPN 
    - `WIREGUARD_PRIVATE_KEY` — NordVPN WireGuard private key
    - `TELEGRAM_BOT_TOKEN` — Telegram bot token from [@BotFather](https://t.me/BotFather)
    - `ALLOWED_USER_IDS` — Your Telegram user ID
+   - `GITHUB_ACCESS_TOKEN` — GitHub PAT for the self-hosted runner
 
 3. **Adjust volume paths** in `docker-compose.yml` to match your storage layout:
    - NAS media paths (Plex)
@@ -85,6 +89,8 @@ Services behind Gluetun use `network_mode: "service:gluetun"` and share its VPN 
 4. **Start the stack**
    ```bash
    docker compose up -d
+   # Optional: start the GitHub Actions runner
+   docker compose --profile runner up -d
    ```
 
 5. **Open the dashboard** at `http://<your-server-ip>:3000`
@@ -93,14 +99,15 @@ Services behind Gluetun use `network_mode: "service:gluetun"` and share its VPN 
 
 ```
 homeserver/
-├── docker-compose.yml          # All 18 services
+├── docker-compose.yml          # All 20 services
 ├── .env                        # Secrets (gitignored)
 ├── .env.example                # Secret template
 ├── homepage/config/            # Dashboard widgets & services
 ├── prowlarr-search/            # Custom search UI (HTML + Nginx)
 ├── nut/conf/                   # NUT configuration
 ├── jackett/config/cardigann/   # Custom indexer definitions
-└── telegram-ollama-bot/        # Bot source code + Dockerfile
+├── telegram-ollama-bot/        # Bot source code + Dockerfile
+└── github-runner/              # GitHub Actions runner Dockerfile + scripts
 ```
 
 Runtime data directories (`*/data/`, `*/config/`) are gitignored and created automatically by each container.

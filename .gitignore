@@ -45,6 +45,12 @@
 !telegram-ollama-bot/Dockerfile
 !telegram-ollama-bot/config.env.example
 
+# GitHub Actions Runner
+!github-runner/
+!github-runner/Dockerfile
+!github-runner/multi-runner-entrypoint.sh
+!github-runner/entrypoint-wrapper.sh
+
 # ========================================
 # Explicitly exclude secrets & heavy data
 # ========================================

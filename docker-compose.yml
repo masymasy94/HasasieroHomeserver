@@ -289,6 +289,41 @@ services:
       - ./qbittorrent/config/custom-cont-init.d:/custom-cont-init.d
       - "/mnt/hdd/Torrent Downloads:/downloads"
 
+  # === DOCKER REGISTRY (Local Image Cache) ===
+  registry:
+    image: registry:2
+    container_name: registry
+    restart: unless-stopped
+    networks:
+      - home-net
+    ports:
+      - "5000:5000"
+    volumes:
+      - registry-data:/var/lib/registry
+
+  # === GITHUB ACTIONS RUNNER (Self-Hosted, Multi-Repo) ===
+  github-runner:
+    build: ./github-runner
+    container_name: github-runner
+    restart: unless-stopped
+    network_mode: host
+    security_opt:
+      - apparmor:unconfined
+    environment:
+      - ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN}
+      - GITHUB_USER=masymasy94
+      - RUNNER_NAME_PREFIX=homeserver
+      - LABELS=self-hosted,Linux,X64,homeserver
+      - POLL_INTERVAL=300
+      - DISABLE_AUTO_UPDATE=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+      - /home/masy/Desktop/docker/apps:/home/masy/Desktop/docker/apps
+      - /home/masy/bin:/home/masy/bin:ro
+    profiles:
+      - runner
+
   # === WATCHTOWER (Auto-update) ===
   watchtower:
     image: containrrr/watchtower
@@ -299,3 +334,6 @@ services:
     environment:
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_SCHEDULE=0 4 * * *
+
+volumes:
+  registry-data:
