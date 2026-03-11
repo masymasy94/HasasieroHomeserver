@@ -51,6 +51,14 @@
 !github-runner/multi-runner-entrypoint.sh
 !github-runner/entrypoint-wrapper.sh
 
+# Docker Agent (LLM Container Monitor)
+!docker-agent/
+!docker-agent/Dockerfile
+!docker-agent/requirements.txt
+!docker-agent/app.py
+!docker-agent/templates/
+!docker-agent/templates/index.html
+
 # ========================================
 # Explicitly exclude secrets & heavy data
 # ========================================

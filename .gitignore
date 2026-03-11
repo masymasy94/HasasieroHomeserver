@@ -46,6 +46,13 @@
 !homeserver/github-runner/multi-runner-entrypoint.sh
 !homeserver/github-runner/entrypoint-wrapper.sh
 
+!homeserver/docker-agent/
+!homeserver/docker-agent/Dockerfile
+!homeserver/docker-agent/requirements.txt
+!homeserver/docker-agent/app.py
+!homeserver/docker-agent/templates/
+!homeserver/docker-agent/templates/index.html
+
 # ========================================
 # apps/ — multi-app deployment platform
 # ========================================
