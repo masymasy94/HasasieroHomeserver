@@ -193,6 +193,8 @@ services:
       - VPN_TYPE=wireguard
       - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
       - SERVER_COUNTRIES=Netherlands
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
     volumes:
       - ./gluetun:/gluetun
 
@@ -289,21 +291,6 @@ services:
       - ./qbittorrent/config/custom-cont-init.d:/custom-cont-init.d
       - "/mnt/hdd/Torrent Downloads:/downloads"
 
-  # === DOCKER AGENT (LLM-powered Container Monitor) ===
-  docker-agent:
-    build: ./docker-agent
-    container_name: docker-agent
-    restart: unless-stopped
-    networks:
-      - home-net
-    ports:
-      - "192.168.3.54:5055:5055"
-    environment:
-      - TZ=Europe/Rome
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    depends_on:
-      - ollama
 
   # === DOCKER REGISTRY (Local Image Cache) ===
   registry:

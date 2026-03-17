@@ -70,16 +70,4 @@
         description: Chat Interface
         server: local
         container: open-webui
-    - Docker Agent:
-        icon: docker
-        href: http://192.168.3.54:5055
-        description: LLM Container Monitor
-        server: local
-        container: docker-agent
-    - Ollama:
-        icon: ollama
-        href: http://192.168.3.54:11434
-        description: LLM Backend
-        server: local
-        container: ollama
 

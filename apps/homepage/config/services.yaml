@@ -68,12 +68,12 @@
         description: Chat Interface
         server: local
         container: open-webui
-    - Ollama:
-        icon: ollama
-        href: http://192.168.3.54:11434
-        description: LLM Backend
+    - Terminal:
+        icon: terminal
+        href: http://192.168.3.54:8088
+        description: Web Terminal
         server: local
-        container: ollama
+        container: ttyd
     - Stable Diffusion Forge:
         icon: stable-diffusion
         href: http://192.168.3.54:7860
