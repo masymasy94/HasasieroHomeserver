@@ -1,0 +1,15 @@
+# Deployed apps (managed by scripts)
+deployments/*/
+
+# Secrets & local config
+config/secrets/*/
+config/settings.conf
+config/apps.conf
+infrastructure/.env
+
+# Deploy artifacts
+*.rollback
+
+# OS
+.DS_Store
+Thumbs.db

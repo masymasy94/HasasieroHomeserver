@@ -20,6 +20,16 @@ require_yq
 APP_DIR=$(get_app_dir "$APP_NAME")
 DEPLOY_COMPOSE=$(get_compose_file "$APP_NAME")
 
+# ─── Detect registry mode ───
+REGISTRY=""
+if [[ -f "${APP_DIR}/.apps-deploy.yml" ]] && command -v yq &>/dev/null; then
+    REGISTRY=$(yq '.registry // ""' "${APP_DIR}/.apps-deploy.yml")
+fi
+USE_REGISTRY=$( [[ -n "$REGISTRY" ]] && echo true || echo false )
+if [[ "$USE_REGISTRY" == "true" ]]; then
+    info "Registry mode: pulling images from ${REGISTRY}"
+fi
+
 # ─── Pull latest ───
 # Allow git to operate on repos owned by a different user (e.g. runner container as root)
 git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
@@ -44,10 +54,12 @@ else
     warn "Not a git repo — skipping pull"
 fi
 
-# ─── Maven build (if Maven project) ───
-if [[ -f "${APP_DIR}/services/common/pom.xml" ]]; then
-    header "Maven Build"
-    maven_build "$APP_DIR"
+# ─── Maven build (if Maven project, skip in registry mode) ───
+if [[ "$USE_REGISTRY" != "true" ]]; then
+    if [[ -f "${APP_DIR}/pom.xml" ]] || [[ -f "${APP_DIR}/services/common/pom.xml" ]]; then
+        header "Maven Build"
+        maven_build "$APP_DIR"
+    fi
 fi
 
 # ─── Find original compose ───
@@ -139,40 +151,60 @@ if [[ -d "$SECRETS_DIR" ]] && [[ -n "$(ls -A "$SECRETS_DIR" 2>/dev/null)" ]]; th
     success "Secret files copied"
 fi
 
-# ─── Safe deploy: build → swap → health-check → rollback on failure ───
+# ─── Bake IMAGE_TAG into deploy compose (registry mode) ───
+if [[ "$USE_REGISTRY" == "true" ]] && [[ -n "${IMAGE_TAG:-}" ]]; then
+    info "Pinning IMAGE_TAG=${IMAGE_TAG} in deploy compose"
+    sed -i "s/\${IMAGE_TAG:-latest}/${IMAGE_TAG}/g" "$DEPLOY_COMPOSE"
+fi
 
-# Tag current images for rollback
-for svc in $(docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" ps --services 2>/dev/null); do
-    docker tag "${APP_NAME}-${svc}" "${APP_NAME}-${svc}:rollback" 2>/dev/null || true
-done
+# ─── Safe deploy: build/pull → swap → health-check → rollback on failure ───
 
-# Build only — running containers are untouched
-info "Building images..."
-if ! docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" build 2>&1 | while read -r line; do echo "  $line"; done; then
-    warn "Build failed — restoring previous compose and aborting"
-    if [[ -f "${DEPLOY_COMPOSE}.rollback" ]]; then
-        cp "${DEPLOY_COMPOSE}.rollback" "$DEPLOY_COMPOSE"
+# Tag current images for rollback (skip in registry mode — GHCR has all versions)
+if [[ "$USE_REGISTRY" != "true" ]]; then
+    for svc in $(docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" ps --services 2>/dev/null); do
+        docker tag "${APP_NAME}-${svc}" "${APP_NAME}-${svc}:rollback" 2>/dev/null || true
+    done
+fi
+
+# Build or pull images — running containers are untouched
+if [[ "$USE_REGISTRY" == "true" ]]; then
+    info "Pulling images from registry..."
+    if ! docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" pull 2>&1 | while read -r line; do echo "  $line"; done; then
+        warn "Pull failed — restoring previous compose and aborting"
+        if [[ -f "${DEPLOY_COMPOSE}.rollback" ]]; then
+            cp "${DEPLOY_COMPOSE}.rollback" "$DEPLOY_COMPOSE"
+        fi
+        rm -f "${DEPLOY_COMPOSE}.rollback"
+        fatal "Pull failed. Running containers were NOT affected."
     fi
-    rm -f "${DEPLOY_COMPOSE}.rollback"
-    fatal "Build failed. Running containers were NOT affected."
+else
+    info "Building images..."
+    if ! docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" build 2>&1 | while read -r line; do echo "  $line"; done; then
+        warn "Build failed — restoring previous compose and aborting"
+        if [[ -f "${DEPLOY_COMPOSE}.rollback" ]]; then
+            cp "${DEPLOY_COMPOSE}.rollback" "$DEPLOY_COMPOSE"
+        fi
+        rm -f "${DEPLOY_COMPOSE}.rollback"
+        fatal "Build failed. Running containers were NOT affected."
+    fi
 fi
 
 # ─── Clean deploy: wipe volumes if requested (e.g. Flyway migration changes) ───
 if [[ "${CLEAN_DEPLOY:-false}" == "true" ]]; then
     warn "CLEAN_DEPLOY requested — wiping all volumes (fresh database, fresh state)"
-    docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" down -v 2>&1 | while read -r line; do echo "  $line"; done
+    docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" down -v --remove-orphans 2>&1 | while read -r line; do echo "  $line"; done
     success "Volumes wiped — Flyway will run all migrations from scratch"
 fi
 
 # Deploy new images (--force-recreate ensures stale containers pick up new port bindings)
 info "Deploying new containers..."
-docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" up -d --force-recreate 2>&1 | while read -r line; do
+docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" up -d --force-recreate --remove-orphans 2>&1 | while read -r line; do
     echo "  $line"
 done || true
 
 # Health check — wait then verify containers are stable
 info "Waiting for containers to stabilise..."
-sleep 30
+sleep 60
 
 HEALTH_OK=true
 # Use 'config --services' to check ALL expected services, not just running ones
@@ -197,7 +229,7 @@ for svc in $(docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" config --service
     if [[ "$STATE" != "running" ]]; then
         warn "Service ${svc} is ${STATE} (expected running)"
         HEALTH_OK=false
-    elif [[ "${RESTARTS:-0}" -gt 2 ]]; then
+    elif [[ "${RESTARTS:-0}" -gt 5 ]]; then
         warn "Service ${svc} has restarted ${RESTARTS} times (crash-looping)"
         HEALTH_OK=false
     fi
@@ -227,19 +259,23 @@ if [[ "$HEALTH_OK" != "true" ]]; then
         cp "${DEPLOY_COMPOSE}.rollback" "$DEPLOY_COMPOSE"
     fi
 
-    for svc in $(docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" ps --services 2>/dev/null || true); do
-        docker tag "${APP_NAME}-${svc}:rollback" "${APP_NAME}-${svc}:latest" 2>/dev/null || true
-    done
+    if [[ "$USE_REGISTRY" != "true" ]]; then
+        for svc in $(docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" ps --services 2>/dev/null || true); do
+            docker tag "${APP_NAME}-${svc}:rollback" "${APP_NAME}-${svc}:latest" 2>/dev/null || true
+        done
+    fi
 
-    docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" up -d --force-recreate 2>&1 | while read -r line; do echo "  $line"; done || true
+    docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" up -d --force-recreate --remove-orphans 2>&1 | while read -r line; do echo "  $line"; done || true
     rm -f "${DEPLOY_COMPOSE}.rollback"
     fatal "Deployment rolled back. Previous containers restored."
 fi
 
 # Cleanup rollback artifacts on success
-for svc in $(docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" ps --services 2>/dev/null); do
-    docker rmi "${APP_NAME}-${svc}:rollback" 2>/dev/null || true
-done
+if [[ "$USE_REGISTRY" != "true" ]]; then
+    for svc in $(docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" ps --services 2>/dev/null); do
+        docker rmi "${APP_NAME}-${svc}:rollback" 2>/dev/null || true
+    done
+fi
 rm -f "${DEPLOY_COMPOSE}.rollback"
 success "Deployment healthy"
 
@@ -263,13 +299,6 @@ for extra_compose in $(find "$APP_DIR" -path "*/frontend-deploy/docker-compose.y
     EXTRA_SVC=$(yq -r '.services | keys | .[]' "$EXTRA_DEPLOY" | grep -v init | head -1)
     if [[ -n "$EXTRA_SVC" ]]; then
         yq -i ".services.\"${EXTRA_SVC}\".networks = [\"default\", \"${PROXY_NETWORK}\"]" "$EXTRA_DEPLOY"
-        # Route frontend through Traefik (same origin as APIs — avoids CORS)
-        yq -i ".services.\"${EXTRA_SVC}\".labels.\"traefik.enable\" = \"true\"" "$EXTRA_DEPLOY"
-        yq -i '.services."'"${EXTRA_SVC}"'".labels."traefik.http.routers.frontend.rule" = "PathPrefix(`/`)"' "$EXTRA_DEPLOY"
-        yq -i ".services.\"${EXTRA_SVC}\".labels.\"traefik.http.routers.frontend.entrypoints\" = \"web\"" "$EXTRA_DEPLOY"
-        yq -i ".services.\"${EXTRA_SVC}\".labels.\"traefik.http.routers.frontend.priority\" = \"1\"" "$EXTRA_DEPLOY"
-        yq -i ".services.\"${EXTRA_SVC}\".labels.\"traefik.http.services.frontend.loadbalancer.server.port\" = \"80\"" "$EXTRA_DEPLOY"
-        yq -i ".services.\"${EXTRA_SVC}\".labels.\"traefik.docker.network\" = \"${PROXY_NETWORK}\"" "$EXTRA_DEPLOY"
     fi
     # Tag current extra frontend images for rollback
     for svc in $(docker compose -f "$EXTRA_DEPLOY" -p "${APP_NAME}-frontend" ps --services 2>/dev/null); do

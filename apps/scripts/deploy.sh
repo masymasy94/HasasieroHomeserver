@@ -95,12 +95,24 @@ fi
 
 info "Found compose file: $(basename "$ORIGINAL_COMPOSE")"
 
-# ─── Step 4: Maven build (if this is a Maven project) ───
-if [[ -f "${APP_DIR}/services/common/pom.xml" ]]; then
-    header "Maven Build"
-    maven_build "$APP_DIR"
-else
-    info "No Maven project detected — skipping build step"
+# ─── Step 3b: Detect registry mode ───
+REGISTRY=""
+if [[ -f "${APP_DIR}/.apps-deploy.yml" ]] && command -v yq &>/dev/null; then
+    REGISTRY=$(yq '.registry // ""' "${APP_DIR}/.apps-deploy.yml")
+fi
+USE_REGISTRY=$( [[ -n "$REGISTRY" ]] && echo true || echo false )
+if [[ "$USE_REGISTRY" == "true" ]]; then
+    info "Registry mode: images will be pulled from ${REGISTRY}"
+fi
+
+# ─── Step 4: Maven build (if Maven project, skip in registry mode) ───
+if [[ "$USE_REGISTRY" != "true" ]]; then
+    if [[ -f "${APP_DIR}/pom.xml" ]] || [[ -f "${APP_DIR}/services/common/pom.xml" ]]; then
+        header "Maven Build"
+        maven_build "$APP_DIR"
+    else
+        info "No Maven project detected — skipping build step"
+    fi
 fi
 
 # ─── Step 5: Detect frontend ───
@@ -195,11 +207,29 @@ if [[ -d "$SECRETS_DIR" ]] && [[ -n "$(ls -A "$SECRETS_DIR" 2>/dev/null)" ]]; th
     success "Secret files copied"
 fi
 
+# ─── Step 7b: Bake IMAGE_TAG into deploy compose (registry mode) ───
+if [[ "$USE_REGISTRY" == "true" ]] && [[ -n "${IMAGE_TAG:-}" ]]; then
+    info "Pinning IMAGE_TAG=${IMAGE_TAG} in deploy compose"
+    sed -i "s/\${IMAGE_TAG:-latest}/${IMAGE_TAG}/g" "$DEPLOY_COMPOSE"
+fi
+
 # ─── Step 8: Start ───
-info "Starting containers..."
-docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" up -d --build 2>&1 | while read -r line; do
-    echo "  $line"
-done
+if [[ "$USE_REGISTRY" == "true" ]]; then
+    info "Pulling images from registry..."
+    if ! docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" pull 2>&1 | while read -r line; do echo "  $line"; done; then
+        rm -rf "$APP_DIR"
+        fatal "Pull from registry failed. Deployment aborted."
+    fi
+    info "Starting containers..."
+    docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" up -d --force-recreate --remove-orphans 2>&1 | while read -r line; do
+        echo "  $line"
+    done
+else
+    info "Building and starting containers..."
+    docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" up -d --build 2>&1 | while read -r line; do
+        echo "  $line"
+    done
+fi
 
 # ─── Step 8b: Start extra compose files (e.g. frontend) ───
 for extra_compose in $(find "$APP_DIR" -path "*/frontend-deploy/docker-compose.yml" -o -path "*/frontend-deploy/compose.yml" 2>/dev/null); do
