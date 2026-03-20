@@ -128,6 +128,14 @@ else
     yq -i ".services.\"${FRONTEND_SERVICE}\".networks.\"${PROXY_NETWORK}\" = {}" "$DEPLOY_COMPOSE"
 fi
 
+# ─── Normalize labels: list → map (yq needs map format to set individual keys) ───
+# docker-compose supports both "- key=value" list and "key: value" map formats;
+# if any service uses list format, convert it so the label-injection below works.
+yq -i '
+  (.services[] | select(.labels | type == "!!seq") | .labels) |=
+    (map(split("=") | {"key": .[0], "value": (.[1:] | join("="))}) | from_entries)
+' "$DEPLOY_COMPOSE"
+
 # ─── Inject Homepage labels ───
 SLOT=$(get_app_field "$APP_NAME" 2)
 APP_IP=$(get_app_field "$APP_NAME" 8)
