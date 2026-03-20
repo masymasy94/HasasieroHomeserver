@@ -112,6 +112,11 @@ if [[ "${IP_ALIAS_ENABLED:-false}" == "true" ]] && [[ -n "$APP_IP" ]]; then
             yq -i ".services.\"${FRONTEND_SERVICE}\".ports = [\"${APP_IP}:80:${FRONTEND_PORT}\"] + .services.\"${FRONTEND_SERVICE}\".ports" "$DEPLOY_COMPOSE"
         fi
     fi
+    # Preserve localhost binding for reverse proxies (e.g. Tailscale Funnel)
+    has_localhost=$(yq -r ".services.\"${FRONTEND_SERVICE}\".ports[]? | select(test(\"^127\\.0\\.0\\.1:\"))" "$DEPLOY_COMPOSE" 2>/dev/null)
+    if [[ -z "$has_localhost" ]]; then
+        yq -i ".services.\"${FRONTEND_SERVICE}\".ports += [\"127.0.0.1:${FRONTEND_PORT}:${FRONTEND_PORT}\"]" "$DEPLOY_COMPOSE"
+    fi
 else
     yq -i 'del(.services[].ports)' "$DEPLOY_COMPOSE"
 fi
