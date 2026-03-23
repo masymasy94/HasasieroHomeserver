@@ -42,7 +42,7 @@
 
     - qBittorrent:
         icon: qbittorrent
-        href: http://192.168.3.54:8085
+        href: http://192.168.3.54:8099
         description: Torrent Client
         server: local
         container: qbittorrent
