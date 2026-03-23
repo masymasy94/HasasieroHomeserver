@@ -149,6 +149,7 @@ services:
       - TZ=Europe/Rome
     volumes:
       - ./homeassistant/config:/config
+      - /run/dbus:/run/dbus:ro
     privileged: true
 
   # === NUT (Nintendo Switch Network Installer) ===
@@ -179,11 +180,11 @@ services:
       - home-net
     ports:
       # Prowlarr (routed through VPN)
-      - "192.168.3.54:9696:9696"
+      - "9696:9696"
       # FlareSolverr (routed through VPN)
-      - "192.168.3.54:8191:8191"
+      - "8191:8191"
       # qBittorrent WebUI (routed through VPN)
-      - "192.168.3.54:8085:8085"
+      - "8099:8085"
       # qBittorrent torrent port (routed through VPN)
       - "6881:6881"
       - "6881:6881/udp"

@@ -111,6 +111,19 @@
 !README.md
 
 # ========================================
+# Deployments — only compose files, no secrets
+# ========================================
+!apps/deployments/
+!apps/deployments/*/
+!apps/deployments/*/docker-compose.yml
+!apps/deployments/*/docker-compose.deploy.yml
+!apps/deployments/*/CLAUDE.md
+!apps/deployments/*/README.md
+!apps/deployments/*/deploy.sh
+!apps/deployments/*/start.sh
+!apps/deployments/*/build-allinone.sh
+
+# ========================================
 # Explicitly exclude secrets & heavy data
 # ========================================
 .env
@@ -118,7 +131,6 @@
 config.env
 settings.conf
 **/secrets/
-**/deployments/
 *.json
 !apps/prowlarr-search/tntvillage.json
 *.json.gz

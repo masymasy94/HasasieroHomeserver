@@ -1,5 +1,19 @@
-# Deployed apps (managed by scripts)
-deployments/*/
+# Deployed apps — track compose/doc/scripts, exclude secrets and app code
+deployments/*/.env
+deployments/*/.env*
+deployments/*/*.key
+deployments/*/*.crt
+deployments/*/*.pem
+deployments/*/*.cert
+deployments/*/whitelist.json
+deployments/*/server/
+deployments/*/src/
+deployments/*/app/
+deployments/*/alexa-skill/
+deployments/*/docker/
+deployments/*/node_modules/
+deployments/*/__pycache__/
+deployments/*/.rollback
 
 # Secrets & local config
 config/secrets/*/
