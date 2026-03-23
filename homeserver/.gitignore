@@ -51,6 +51,11 @@
 !github-runner/multi-runner-entrypoint.sh
 !github-runner/entrypoint-wrapper.sh
 
+# AdGuard Home config
+!adguardhome/
+!adguardhome/conf/
+!adguardhome/conf/AdGuardHome.yaml
+
 # Docker Agent (LLM Container Monitor)
 !docker-agent/
 !docker-agent/Dockerfile

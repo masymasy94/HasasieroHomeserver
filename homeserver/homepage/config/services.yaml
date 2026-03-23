@@ -24,6 +24,12 @@
         description: System & Container Monitor
         server: local
         container: glances
+    - AdGuard Home:
+        icon: adguard-home
+        href: http://192.168.3.54:3053
+        description: DNS Ad Blocker
+        server: local
+        container: adguardhome
 
 - Media:
     - Plex:

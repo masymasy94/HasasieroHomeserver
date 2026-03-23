@@ -79,6 +79,27 @@ services:
       - ./nginx-proxy-manager/data:/data
       - ./nginx-proxy-manager/letsencrypt:/etc/letsencrypt
 
+  # === ADGUARD HOME (Network-wide Ad Blocker & DNS) ===
+  adguardhome:
+    image: adguard/adguardhome
+    container_name: adguardhome
+    restart: unless-stopped
+    networks:
+      - home-net
+    ports:
+      # DNS
+      - "192.168.3.54:53:53/tcp"
+      - "192.168.3.54:53:53/udp"
+      # Admin panel (setup wizard starts on 3000, mapped to 3053 to avoid conflict with homepage)
+      - "3053:3000/tcp"
+      # DNS-over-TLS
+      - "853:853/tcp"
+    volumes:
+      - ./adguardhome/work:/opt/adguardhome/work
+      - ./adguardhome/conf:/opt/adguardhome/conf
+    environment:
+      - TZ=Europe/Rome
+
   # === OLLAMA (LLM Backend) ===
   ollama:
     image: ollama/ollama
