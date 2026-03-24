@@ -38,15 +38,17 @@ A single `docker-compose.yml` running all core services.
 | Category | Service | Port | Description |
 |----------|---------|------|-------------|
 | **Media** | Plex | `32400` | Media server (NAS) |
+| | Prowlarr | `9696` | Indexer manager (VPN-routed) |
 | | Prowlarr Search | `8888` | Custom torrent search UI |
 | | Jackett | `9117` | Torrent indexer proxy |
-| | qBittorrent | `8085` | Torrent client (VPN-routed) |
+| | qBittorrent | `8099` | Torrent client (VPN-routed) |
 | **AI** | Ollama | `11434` | LLM inference (NVIDIA GPU) |
 | | Open WebUI | `8080` | Chat interface for Ollama |
 | | Telegram Bot | — | Telegram interface for Ollama |
 | **Smart Home** | Home Assistant | `8123` | Home automation |
-| **VPN** | Gluetun | — | NordVPN WireGuard gateway |
-| | FlareSolverr | `8191` | Cloudflare bypass |
+| **DNS** | AdGuard Home | `53` `853` `3053` | Network-wide DNS + ad blocker |
+| **VPN** | Gluetun | `9696` `8191` `8099` `6881` | NordVPN WireGuard gateway |
+| | FlareSolverr | `8191` | Cloudflare bypass (VPN-routed) |
 | **Infra** | Homepage | `3000` | Central dashboard |
 | | Nginx Proxy Manager | `80` `443` `81` | Reverse proxy + SSL |
 | | Portainer | `9000` | Container management |
@@ -70,13 +72,14 @@ HOST (192.168.3.54)
 ├── home-net (bridge)
 │   ├── Portainer, Homepage, Uptime Kuma, Glances
 │   ├── Nginx Proxy Manager (80, 443, 81)
+│   ├── AdGuard Home (53, 853, 3053)
 │   ├── Ollama → Open WebUI, Telegram Bot
 │   ├── Jackett, Prowlarr Search, NUT, Registry
 │   │
 │   └── Gluetun VPN (NordVPN WireGuard)
 │       ├── Prowlarr (9696)
 │       ├── FlareSolverr (8191)
-│       └── qBittorrent (8085)
+│       └── qBittorrent (8099)
 │
 └── Watchtower
 ```
