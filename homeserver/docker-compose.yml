@@ -314,6 +314,26 @@ services:
       - "/mnt/hdd/Torrent Downloads:/downloads"
 
 
+  # === HASASIERO ANIMEHUB (Multi-Site Anime Search, Stream & Download) ===
+  animehub:
+    image: ghcr.io/masymasy94/hasasieroanimehub:latest
+    container_name: animehub
+    restart: unless-stopped
+    networks:
+      - home-net
+    ports:
+      - "192.168.3.54:8010:8000"
+    environment:
+      - TZ=Europe/Rome
+      - DATABASE_URL=sqlite+aiosqlite:////data/animehub.db
+      - DOWNLOAD_DIR=/downloads
+      - MAX_CONCURRENT_DOWNLOADS=2
+      - LOG_LEVEL=INFO
+      - STATIC_DIR=/app/static
+    volumes:
+      - animehub-data:/data
+      - /mnt/nas/Seagate_Backup_Plus_Drive/Anime:/downloads
+
   # === DOCKER REGISTRY (Local Image Cache) ===
   registry:
     image: registry:2
@@ -345,6 +365,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
       - /home/masy/Desktop/docker/apps:/home/masy/Desktop/docker/apps
+      - /home/masy/Desktop/docker/homeserver:/home/masy/Desktop/docker/homeserver:ro
       - /home/masy/bin:/home/masy/bin:ro
     profiles:
       - runner
@@ -362,3 +383,4 @@ services:
 
 volumes:
   registry-data:
+  animehub-data:

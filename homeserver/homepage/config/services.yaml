@@ -53,6 +53,13 @@
         server: local
         container: qbittorrent
 
+    - AnimeHub:
+        icon: mdi-animation-play
+        href: http://192.168.3.54:8010
+        description: Anime Search, Stream & Download
+        server: local
+        container: animehub
+
 - Smart Home:
     - Home Assistant:
         icon: home-assistant
