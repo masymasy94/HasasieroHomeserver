@@ -364,6 +364,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
+      - /var/run/tailscale/tailscaled.sock:/var/run/tailscale/tailscaled.sock:ro
       - /home/masy/Desktop/docker/apps:/home/masy/Desktop/docker/apps
       - /home/masy/Desktop/docker/homeserver:/home/masy/Desktop/docker/homeserver:ro
       - /home/masy/bin:/home/masy/bin:ro

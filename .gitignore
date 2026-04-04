@@ -46,6 +46,11 @@
 !homeserver/github-runner/multi-runner-entrypoint.sh
 !homeserver/github-runner/entrypoint-wrapper.sh
 
+!homeserver/qbittorrent/
+!homeserver/qbittorrent/config/
+!homeserver/qbittorrent/config/custom-cont-init.d/
+!homeserver/qbittorrent/config/custom-cont-init.d/*.sh
+
 !homeserver/docker-agent/
 !homeserver/docker-agent/Dockerfile
 !homeserver/docker-agent/requirements.txt
