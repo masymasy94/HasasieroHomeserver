@@ -76,6 +76,14 @@
         server: local
         container: nut
 
+- Apps:
+    - Hasasierofy:
+        icon: http://192.168.3.201/static/icons/icon-192.png
+        href: http://192.168.3.201
+        description: Music Streaming
+        server: local
+        container: hasasierofy-api-1
+
 - AI:
     - Open WebUI:
         icon: open-webui
