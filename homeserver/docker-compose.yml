@@ -8,6 +8,8 @@ services:
     image: plexinc/pms-docker
     container_name: plex
     restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     network_mode: host
     environment:
       - TZ=Europe/Rome
@@ -319,6 +321,8 @@ services:
     image: ghcr.io/masymasy94/hasasieroanimehub:latest
     container_name: animehub
     restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
     networks:
       - home-net
     ports:
