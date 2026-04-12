@@ -38,12 +38,10 @@
 !jackett/config/cardigann/definitions/
 !jackett/config/cardigann/definitions/*.yml
 
-# Telegram Ollama Bot
-!telegram-ollama-bot/
-!telegram-ollama-bot/bot.py
-!telegram-ollama-bot/requirements.txt
-!telegram-ollama-bot/Dockerfile
-!telegram-ollama-bot/config.env.example
+# Ollama Modelfiles
+!ollama/
+!ollama/modelfiles/
+!ollama/modelfiles/Modelfile.*
 
 # GitHub Actions Runner
 !github-runner/

@@ -91,4 +91,10 @@
         description: Chat Interface
         server: local
         container: open-webui
+    - Ollama:
+        icon: ollama
+        href: http://192.168.3.54:11434
+        description: LLM Backend (coder 3B, general 2B/4B)
+        server: local
+        container: ollama
 
