@@ -209,6 +209,19 @@ if [[ "${CLEAN_DEPLOY:-false}" == "true" ]]; then
     success "Volumes wiped — Flyway will run all migrations from scratch"
 fi
 
+# Apps that gate services behind a compose profile (e.g. hasasierofy's
+# optional slskd daemon) declare the profiles they want active in a
+# `.deploy-profiles` file at the repo root, one profile per line. We
+# export COMPOSE_PROFILES so every subsequent `docker compose` invocation
+# in this script (up / config --services / ps) honours the same set.
+if [[ -f "${APP_DIR}/.deploy-profiles" ]]; then
+    PROFILES=$(grep -vE '^\s*(#|$)' "${APP_DIR}/.deploy-profiles" | paste -sd,)
+    if [[ -n "$PROFILES" ]]; then
+        export COMPOSE_PROFILES="$PROFILES"
+        info "Activating compose profiles: ${COMPOSE_PROFILES}"
+    fi
+fi
+
 # Deploy new images (--force-recreate ensures stale containers pick up new port bindings)
 info "Deploying new containers..."
 docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" up -d --force-recreate --remove-orphans 2>&1 | while read -r line; do
