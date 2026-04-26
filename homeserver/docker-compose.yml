@@ -357,6 +357,11 @@ services:
       - /home/masy/Desktop/docker/apps:/home/masy/Desktop/docker/apps
       - /home/masy/Desktop/docker/homeserver:/home/masy/Desktop/docker/homeserver:ro
       - /home/masy/bin:/home/masy/bin:ro
+      # /mnt/hdd is read-only here only so deploy preflight checks can `df`
+      # and verify bind-mount source dirs exist (minio_data, slskd/*).
+      # Production stacks bind-mount /mnt/hdd via the host docker daemon, so
+      # they don't depend on this — only the runner's own filesystem view does.
+      - /mnt/hdd:/mnt/hdd:ro
     profiles:
       - runner
 
