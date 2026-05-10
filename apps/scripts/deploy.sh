@@ -226,7 +226,7 @@ if [[ "$USE_REGISTRY" == "true" ]]; then
     done
 else
     info "Building and starting containers..."
-    docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" up -d --build 2>&1 | while read -r line; do
+    docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" up -d --build --remove-orphans 2>&1 | while read -r line; do
         echo "  $line"
     done
 fi
@@ -263,7 +263,7 @@ for extra_compose in $(find "$APP_DIR" -path "*/frontend-deploy/docker-compose.y
         yq -i ".services.\"${EXTRA_SVC}\".labels.\"traefik.docker.network\" = \"${PROXY_NETWORK}\"" "$EXTRA_DEPLOY"
     fi
     info "Starting: ${EXTRA_DEPLOY#${APP_DIR}/}"
-    docker compose -f "$EXTRA_DEPLOY" -p "${APP_NAME}-frontend" up -d 2>&1 | while read -r line; do
+    docker compose -f "$EXTRA_DEPLOY" -p "${APP_NAME}-frontend" up -d --remove-orphans 2>&1 | while read -r line; do
         echo "  $line"
     done
 done

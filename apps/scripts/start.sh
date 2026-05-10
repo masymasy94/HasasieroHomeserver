@@ -18,7 +18,7 @@ if [[ ! -f "$DEPLOY_COMPOSE" ]]; then
     fatal "Deploy compose not found: ${DEPLOY_COMPOSE}"
 fi
 
-docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" up -d 2>&1 | while read -r line; do
+docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" up -d --remove-orphans 2>&1 | while read -r line; do
     echo "  $line"
 done
 

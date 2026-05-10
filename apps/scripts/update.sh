@@ -344,7 +344,7 @@ for extra_compose in $(find "$APP_DIR" -path "*/frontend-deploy/docker-compose.y
 
     # Deploy extra frontend
     info "Deploying extra frontend: ${EXTRA_DEPLOY#${APP_DIR}/}"
-    docker compose -f "$EXTRA_DEPLOY" -p "${APP_NAME}-frontend" up -d --force-recreate 2>&1 | while read -r line; do
+    docker compose -f "$EXTRA_DEPLOY" -p "${APP_NAME}-frontend" up -d --force-recreate --remove-orphans 2>&1 | while read -r line; do
         echo "  $line"
     done || true
 
@@ -390,7 +390,7 @@ for extra_compose in $(find "$APP_DIR" -path "*/frontend-deploy/docker-compose.y
             docker tag "${APP_NAME}-frontend-${svc}:rollback" "${APP_NAME}-frontend-${svc}:latest" 2>/dev/null || true
         done
 
-        docker compose -f "$EXTRA_DEPLOY" -p "${APP_NAME}-frontend" up -d --force-recreate 2>&1 | while read -r line; do echo "  $line"; done || true
+        docker compose -f "$EXTRA_DEPLOY" -p "${APP_NAME}-frontend" up -d --force-recreate --remove-orphans 2>&1 | while read -r line; do echo "  $line"; done || true
         rm -f "${EXTRA_DEPLOY}.rollback"
         warn "Extra frontend rolled back to previous version"
         continue
