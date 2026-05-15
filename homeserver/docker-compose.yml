@@ -365,6 +365,21 @@ services:
     profiles:
       - runner
 
+  # === CLOUDFLARE TUNNEL ===
+  # Serves: hasasierofy.fyi -> 192.168.3.201:8000 (hasasierofy api)
+  #         hasasiero-jellyfin.fyi -> 192.168.3.54:8096 (jellyfin)
+  # Credentials (*.json + cert.pem) are gitignored — see cloudflared/README.md.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    network_mode: host
+    command: tunnel --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./cloudflared:/etc/cloudflared:ro
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
   # === WATCHTOWER (Auto-update) ===
   watchtower:
     image: containrrr/watchtower
