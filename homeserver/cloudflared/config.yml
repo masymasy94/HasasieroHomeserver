@@ -1,0 +1,10 @@
+tunnel: 223d2293-3ff5-47af-90da-5614a7c6cdd6
+credentials-file: /etc/cloudflared/223d2293-3ff5-47af-90da-5614a7c6cdd6.json
+origincert: /etc/cloudflared/cert.pem
+
+ingress:
+  - hostname: hasasiero-jellyfin.fyi
+    service: http://192.168.3.54:8096
+  - hostname: hasasierofy.fyi
+    service: http://192.168.3.201:8000
+  - service: http_status:404

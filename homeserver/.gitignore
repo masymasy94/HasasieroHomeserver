@@ -54,6 +54,11 @@
 !adguardhome/conf/
 !adguardhome/conf/AdGuardHome.yaml
 
+# Cloudflare Tunnel (config only — credentials *.json / cert *.pem stay ignored)
+!cloudflared/
+!cloudflared/config.yml
+!cloudflared/README.md
+
 # Docker Agent (LLM Container Monitor)
 !docker-agent/
 !docker-agent/Dockerfile
