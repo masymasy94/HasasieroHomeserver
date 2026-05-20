@@ -349,7 +349,6 @@ services:
       - RUNNER_NAME_PREFIX=homeserver
       - LABELS=self-hosted,Linux,X64,homeserver
       - POLL_INTERVAL=300
-      - DISABLE_AUTO_UPDATE=true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
