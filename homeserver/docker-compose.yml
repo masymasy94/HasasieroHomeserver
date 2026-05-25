@@ -3,28 +3,33 @@ networks:
     name: home-net
 
 services:
-  # === PLEX ===
-  plex:
-    image: plexinc/pms-docker
-    container_name: plex
+  # === JELLYFIN ===
+  # VAAPI uses /dev/dri/renderD129 (Intel iGPU, PCI 0000:00:02.0).
+  # renderD128 on this host is the NVIDIA discrete GPU — do NOT use it for VAAPI.
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
     restart: unless-stopped
-    labels:
-      - "com.centurylinklabs.watchtower.enable=false"
-    network_mode: host
+    networks:
+      - home-net
+    ports:
+      - "192.168.3.54:8096:8096"
     environment:
       - TZ=Europe/Rome
-      - PLEX_UID=1000
-      - PLEX_GID=1000
-      - ADVERTISE_IP=http://192.168.3.54:32400/
-      - ALLOWED_NETWORKS=192.168.3.0/24
+      - JELLYFIN_PublishedServerUrl=https://hasasiero-jellyfin.fyi
+    group_add:
+      - "992"  # render group on host (cat /etc/group | grep render)
+    devices:
+      - /dev/dri/renderD129:/dev/dri/renderD129
+      - /dev/dri/card2:/dev/dri/card2
     volumes:
-      - ./plex/config:/config
-      - /mnt/nas/Seagate_Backup_Plus_Drive/Film:/data/film
-      - /mnt/nas/Seagate_Backup_Plus_Drive/Film Disney:/data/film-disney
-      - /mnt/nas/Seagate_Backup_Plus_Drive/Film Horror:/data/film-horror
-      - /mnt/nas/Seagate_Backup_Plus_Drive/SerieTV:/data/serietv
-      - /mnt/nas/Seagate_Backup_Plus_Drive/Anime:/data/anime
-
+      - ./jellyfin/config:/config
+      - ./jellyfin/cache:/cache
+      - /mnt/nas/Seagate_Backup_Plus_Drive/Anime:/media/anime
+      - /mnt/nas/Seagate_Backup_Plus_Drive/Film:/media/film
+      - /mnt/nas/Seagate_Backup_Plus_Drive/Film Disney:/media/film-disney
+      - /mnt/nas/Seagate_Backup_Plus_Drive/Film Horror:/media/film-horror
+      - /mnt/nas/Seagate_Backup_Plus_Drive/SerieTV:/media/serietv
 
   # === PORTAINER ===
   portainer:
@@ -117,9 +122,16 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       - OLLAMA_MAX_LOADED_MODELS=1
       - OLLAMA_NUM_PARALLEL=1
-      - OLLAMA_KEEP_ALIVE=5m
+      - OLLAMA_KEEP_ALIVE=3m
+      - OLLAMA_NUM_THREADS=8
+      - OLLAMA_MAX_QUEUE=64
+      - OLLAMA_FLASH_ATTENTION=1
+      - OLLAMA_KV_CACHE_TYPE=q8_0
     volumes:
       - /mnt/hdd/ollama/data:/root/.ollama
+    mem_limit: 8g
+    cpu_shares: 512
+    oom_score_adj: 500
     deploy:
       resources:
         reservations:
