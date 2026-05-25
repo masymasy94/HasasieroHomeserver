@@ -233,6 +233,18 @@ services:
       - PGID=1000
     volumes:
       - ./prowlarr/config:/config
+    # Detect orphaning when gluetun (netns owner) restarts: probe gluetun's
+    # control server in the shared netns. 401 = reachable (still attached);
+    # connection failure = orphaned -> unhealthy -> autoheal restarts it.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -o /dev/null --max-time 5 http://127.0.0.1:8000/v1/publicip/ip || exit 1"]
+      interval: 30s
+      timeout: 8s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "autoheal=true"
+      - "com.centurylinklabs.watchtower.depends-on=gluetun"
 
   # === PROWLARR SEARCH (Custom Search UI) ===
   prowlarr-search:
@@ -277,6 +289,16 @@ services:
     environment:
       - TZ=Europe/Rome
       - LOG_LEVEL=info
+    # See prowlarr healthcheck note: detects gluetun-netns orphaning.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -o /dev/null --max-time 5 http://127.0.0.1:8000/v1/publicip/ip || exit 1"]
+      interval: 30s
+      timeout: 8s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "autoheal=true"
+      - "com.centurylinklabs.watchtower.depends-on=gluetun"
 
   # === GLANCES (System & Container Monitor) ===
   glances:
@@ -311,6 +333,16 @@ services:
       - ./qbittorrent/config:/config
       - ./qbittorrent/config/custom-cont-init.d:/custom-cont-init.d
       - "/mnt/hdd/Torrent Downloads:/downloads"
+    # See prowlarr healthcheck note: detects gluetun-netns orphaning.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -o /dev/null --max-time 5 http://127.0.0.1:8000/v1/publicip/ip || exit 1"]
+      interval: 30s
+      timeout: 8s
+      retries: 3
+      start_period: 60s
+    labels:
+      - "autoheal=true"
+      - "com.centurylinklabs.watchtower.depends-on=gluetun"
 
 
   # === HASASIERO ANIMEHUB (Multi-Site Anime Search, Stream & Download) ===
@@ -401,6 +433,24 @@ services:
     environment:
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_SCHEDULE=0 4 * * *
+
+  # === AUTOHEAL ===
+  # Restarts containers labelled autoheal=true when they report unhealthy.
+  # Primary purpose: re-attach gluetun's netns-sharing services (qbittorrent,
+  # prowlarr, flaresolverr) after gluetun restarts for ANY reason — their
+  # depends_on only orders startup, it does NOT restart them on gluetun reload.
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: autoheal
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Rome
+      - AUTOHEAL_CONTAINER_LABEL=autoheal
+      - AUTOHEAL_INTERVAL=10
+      - AUTOHEAL_START_PERIOD=30
+      - CURL_TIMEOUT=30
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
   registry-data:
