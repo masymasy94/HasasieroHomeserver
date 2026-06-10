@@ -32,12 +32,12 @@
         container: adguardhome
 
 - Media:
-    - Plex:
-        icon: plex
-        href: http://192.168.3.54:32400/web
-        description: Media Server
+    - Jellyfin:
+        icon: jellyfin
+        href: http://192.168.3.54:8096
+        description: "Media Server | [Remote](https://hasasiero-jellyfin.fyi)"
         server: local
-        container: plex
+        container: jellyfin
 
     - Prowlarr Search:
         icon: prowlarr
@@ -80,21 +80,7 @@
     - Hasasierofy:
         icon: http://192.168.3.201/static/icons/icon-192.png
         href: http://192.168.3.201
-        description: Music Streaming
+        description: "Music Streaming | [Remote](https://hasasierofy.fyi)"
         server: local
         container: hasasierofy-api-1
-
-- AI:
-    - Open WebUI:
-        icon: open-webui
-        href: http://192.168.3.54:8080
-        description: Chat Interface
-        server: local
-        container: open-webui
-    - Ollama:
-        icon: ollama
-        href: http://192.168.3.54:11434
-        description: LLM Backend (coder 3B, general 2B/4B)
-        server: local
-        container: ollama
 

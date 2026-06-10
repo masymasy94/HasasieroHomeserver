@@ -4,12 +4,14 @@ networks:
 
 services:
   # === JELLYFIN ===
-  # VAAPI uses /dev/dri/renderD129 (Intel iGPU, PCI 0000:00:02.0).
-  # renderD128 on this host is the NVIDIA discrete GPU — do NOT use it for VAAPI.
+  # HW transcoding via NVENC on the NVIDIA dGPU (GTX 1650 Max-Q) through runtime: nvidia.
+  # /dev/dri/renderD129 (Intel iGPU) is kept for VAAPI fallback decode only.
+  # renderD128 is the NVIDIA dGPU — used via CUDA/NVENC, NOT via VAAPI.
   jellyfin:
     image: jellyfin/jellyfin:latest
     container_name: jellyfin
     restart: unless-stopped
+    runtime: nvidia
     networks:
       - home-net
     ports:
@@ -17,6 +19,8 @@ services:
     environment:
       - TZ=Europe/Rome
       - JELLYFIN_PublishedServerUrl=https://hasasiero-jellyfin.fyi
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
     group_add:
       - "992"  # render group on host (cat /etc/group | grep render)
     devices:
@@ -106,58 +110,6 @@ services:
       - ./adguardhome/conf:/opt/adguardhome/conf
     environment:
       - TZ=Europe/Rome
-
-  # === OLLAMA (LLM Backend) ===
-  ollama:
-    image: ollama/ollama
-    container_name: ollama
-    restart: unless-stopped
-    networks:
-      - home-net
-    ports:
-      - "11434:11434"
-    environment:
-      - TZ=Europe/Rome
-      - OLLAMA_HOST=0.0.0.0
-      - NVIDIA_VISIBLE_DEVICES=all
-      - OLLAMA_MAX_LOADED_MODELS=1
-      - OLLAMA_NUM_PARALLEL=1
-      - OLLAMA_KEEP_ALIVE=3m
-      - OLLAMA_NUM_THREADS=8
-      - OLLAMA_MAX_QUEUE=64
-      - OLLAMA_FLASH_ATTENTION=1
-      - OLLAMA_KV_CACHE_TYPE=q8_0
-    volumes:
-      - /mnt/hdd/ollama/data:/root/.ollama
-    mem_limit: 8g
-    cpu_shares: 512
-    oom_score_adj: 500
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-
-  # === OPEN WEBUI (Chat Interface) ===
-  open-webui:
-    image: ghcr.io/open-webui/open-webui:main
-    container_name: open-webui
-    restart: unless-stopped
-    networks:
-      - home-net
-    ports:
-      - "192.168.3.54:8080:8080"
-    environment:
-      - TZ=Europe/Rome
-      - OLLAMA_BASE_URL=http://ollama:11434
-      - WEBUI_AUTH=False
-    volumes:
-      - ./open-webui/data:/app/backend/data
-    depends_on:
-      - ollama
-
 
   # === HOME ASSISTANT ===
   homeassistant:
@@ -408,6 +360,19 @@ services:
     profiles:
       - runner
 
+  # === PROVOLONI COUNTDOWN ===
+  provoloni-countdown:
+    image: nginx:alpine
+    container_name: provoloni-countdown
+    restart: unless-stopped
+    networks:
+      - home-net
+    ports:
+      - "127.0.0.1:8891:80"
+    volumes:
+      - ./provoloni-countdown/html:/usr/share/nginx/html:ro
+      - ./provoloni-countdown/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
   # === CLOUDFLARE TUNNEL ===
   # Serves: hasasierofy.fyi -> 192.168.3.201:8000 (hasasierofy api)
   #         hasasiero-jellyfin.fyi -> 192.168.3.54:8096 (jellyfin)
@@ -433,6 +398,9 @@ services:
     environment:
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_SCHEDULE=0 4 * * *
+      # The bundled docker client defaults to API 1.25; the host daemon
+      # (>=29.x) requires >=1.40 and rejects it, crash-looping the container.
+      - DOCKER_API_VERSION=1.40
 
   # === AUTOHEAL ===
   # Restarts containers labelled autoheal=true when they report unhealthy.
