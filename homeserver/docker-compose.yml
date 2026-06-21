@@ -21,6 +21,8 @@ services:
       - JELLYFIN_PublishedServerUrl=https://hasasiero-jellyfin.fyi
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
+      - JELLYFIN_FFmpeg__probesize=100M
+      - JELLYFIN_FFmpeg__analyzeduration=50M
     group_add:
       - "992"  # render group on host (cat /etc/group | grep render)
     devices:
