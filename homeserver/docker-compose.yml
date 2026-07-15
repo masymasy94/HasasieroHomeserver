@@ -321,6 +321,26 @@ services:
       - animehub-data:/data
       - /mnt/nas/Seagate_Backup_Plus_Drive/Anime:/downloads
 
+  # === AUDIOBOOKSHELF (Self-Hosted Audiobook & Podcast Server) ===
+  # Purpose-built audiobook server: chapter navigation, per-user resume/progress
+  # sync, official iOS/Android apps. Library on the NAS (Audiolibri), config +
+  # metadata cache under the repo dir (SSD), same pattern as jellyfin/portainer.
+  # Listens on :80 inside the container -> mapped to host :13378.
+  audiobookshelf:
+    image: ghcr.io/advplyr/audiobookshelf:latest
+    container_name: audiobookshelf
+    restart: unless-stopped
+    networks:
+      - home-net
+    ports:
+      - "192.168.3.54:13378:80"
+    environment:
+      - TZ=Europe/Rome
+    volumes:
+      - ./audiobookshelf/config:/config
+      - ./audiobookshelf/metadata:/metadata
+      - /mnt/nas/Seagate_Backup_Plus_Drive/Audiolibri:/audiobooks
+
   # === DOCKER REGISTRY (Local Image Cache) ===
   registry:
     image: registry:2
