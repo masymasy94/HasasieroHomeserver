@@ -323,8 +323,9 @@ services:
 
   # === AUDIOBOOKSHELF (Self-Hosted Audiobook & Podcast Server) ===
   # Purpose-built audiobook server: chapter navigation, per-user resume/progress
-  # sync, official iOS/Android apps. Library on the NAS (Audiolibri), config +
-  # metadata cache under the repo dir (SSD), same pattern as jellyfin/portainer.
+  # sync, official iOS/Android apps. Library on the local HDD (/mnt/hdd/audiobooks,
+  # same disk slskd downloads to -> instant moves, no CIFS), config + metadata
+  # cache under the repo dir (SSD), same pattern as jellyfin/portainer.
   # Listens on :80 inside the container -> mapped to host :13378.
   audiobookshelf:
     image: ghcr.io/advplyr/audiobookshelf:latest
@@ -339,7 +340,7 @@ services:
     volumes:
       - ./audiobookshelf/config:/config
       - ./audiobookshelf/metadata:/metadata
-      - /mnt/nas/Seagate_Backup_Plus_Drive/Audiolibri:/audiobooks
+      - /mnt/hdd/audiobooks:/audiobooks
 
   # === DOCKER REGISTRY (Local Image Cache) ===
   registry:
