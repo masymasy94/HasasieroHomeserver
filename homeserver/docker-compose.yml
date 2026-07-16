@@ -168,6 +168,9 @@ services:
       - VPN_TYPE=wireguard
       - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
       - SERVER_COUNTRIES=Netherlands
+      # HTTP proxy on :8888 (home-net only, no host port): lets other stacks
+      # (audiobooks) tunnel through the VPN without NordVPN service creds
+      - HTTPPROXY=on
     sysctls:
       - net.ipv4.conf.all.src_valid_mark=1
     volumes:
