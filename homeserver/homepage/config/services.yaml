@@ -76,6 +76,13 @@
         server: local
         container: nut
 
+    - DMForge:
+        icon: mdi-dice-d20
+        href: http://192.168.3.54:8600
+        description: AI Dungeon Master D&D 5e
+        server: local
+        container: dmforge
+
 - Apps:
     - Hasasierofy:
         icon: http://192.168.3.201/static/icons/icon-192.png
@@ -83,4 +90,18 @@
         description: "Music Streaming | [Remote](https://hasasierofy.fyi)"
         server: local
         container: hasasierofy-api-1
+
+    - HasasieroGPT:
+        icon: mdi-robot-happy
+        href: http://192.168.3.54:8590
+        description: Local AI Chat & Media Orchestrator
+        server: local
+        container: hasasierogpt
+
+    - AudioBruh:
+        icon: mdi-book-music
+        href: http://192.168.3.54:8680
+        description: Audiobook Search, Download & Player
+        server: local
+        container: audiobruh
 
