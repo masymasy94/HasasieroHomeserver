@@ -4,9 +4,14 @@ Un solo `docker-compose.yml`, 21 servizi, su questa macchina (`192.168.3.54`). S
 mano da questa cartella:
 
 ```bash
-docker compose config -q                 # valida prima di applicare
-docker compose up -d <servizio>          # ricrea solo quello che hai toccato
+docker compose config -q                                          # valida prima di applicare
+sops exec-env env.sops.yaml 'docker compose up -d <servizio>'     # ricrea solo ciò che hai toccato
 ```
+
+`.env` in chiaro è ancora sul disco e compose lo legge da sé, quindi un `docker compose up -d`
+nudo funziona ancora. La forma con `sops exec-env` è quella che continuerà a funzionare quando
+il `.env` sparirà: usa quella. I segreti veri di questo stack (chiave WireGuard di NordVPN,
+token Telegram, PAT GitHub del runner, authkey Tailscale) stanno lì dentro.
 
 I dati grossi stanno su `/mnt/hdd/`, non nel repo. `github-runner` è **gated da profilo**:
 se un deploy resta in coda, `COMPOSE_PROFILES=runner docker compose up -d github-runner`.

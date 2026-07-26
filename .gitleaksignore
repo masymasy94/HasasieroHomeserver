@@ -1,0 +1,4 @@
+# Falsi positivi verificati (2026-07-26).
+# tntvillage.json è un dump di titoli di film scaricato dall'indexer: la regola
+# square-access-token becca stringhe ad alta entropia dentro i dati, non un token.
+5b32690545d35965adc4f746a76ecd4e884dc0c1:apps/prowlarr-search/tntvillage.json:square-access-token:1

@@ -33,6 +33,28 @@ finiscono online a ogni push. `dmforge`, `audiobruh` e `hasasierogpt` sono priva
 Conseguenza: qui non vanno né segreti (i `.env` sono gitignorati, tienili così) né descrizioni
 di falle aperte o credenziali da ruotare. Quelle stanno nelle note locali.
 
+## Segreti: SOPS + age
+
+I `.env` in chiaro restano sul disco (gitignorati) ma la copia autorevole è cifrata:
+`<stack>/env.sops.yaml`, con chiave age. La privata è in `~/.config/sops/age/keys.txt` (600) e
+Claude non può leggerla; la pubblica sta in `.sops.yaml`.
+
+```bash
+sops exec-env homeserver/env.sops.yaml 'docker compose up -d'   # deploy: i valori vanno
+                                                                # nell'ambiente, non a schermo
+sops edit homeserver/env.sops.yaml                              # modificare un segreto
+sops -e --input-type dotenv --output-type yaml X/.env > X/env.sops.yaml   # cifrare un nuovo stack
+```
+
+- **Mai `sops -d`**: stamperebbe i segreti nel transcript. Un hook `PreToolUse` lo blocca e
+  suggerisce `exec-env`. Se ti serve davvero il testo in chiaro, lancialo tu con `! sops -d ...`.
+- `env.sops.yaml` **non** è committato in questo repo perché è pubblico: pubblicare il
+  cifrato di una chiave WireGuard è un rischio che non vale la pena. Nei repo privati
+  (dmforge) invece è versionato, ed è lì che SOPS dà il suo meglio.
+- Un hook `pre-commit` globale (`~/.config/git/hooks/`, `core.hooksPath`) passa `gitleaks` su
+  ogni commit di **ogni** repo della macchina e lo blocca se trova una credenziale. I falsi
+  positivi si silenziano per fingerprint in `.gitleaksignore`.
+
 ## Convenzioni
 
 - Italiano nei commenti, nei doc e nei messaggi utente; codice minimale (niente

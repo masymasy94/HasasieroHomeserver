@@ -1,0 +1,11 @@
+# Chi può decifrare: la chiave age di questa macchina.
+# La privata sta in ~/.config/sops/age/keys.txt (600, esclusa dalla lettura di Claude).
+#
+# I .env cifrati si salvano come `env.sops.yaml` e NON come `.env.sops`, perché
+# `sops exec-env` non accetta --input-type: riconosce il formato solo dall'estensione.
+#
+# Aggiungere una seconda macchina: metti qui la sua chiave pubblica, poi
+#   sops updatekeys <file>.sops.yaml
+creation_rules:
+  - path_regex: (\.env|\.sops\.yaml)$
+    age: age1xsjc6rcqck093e9vjv5hhtdelmznj0k3dv2v8pra4d7nh0g055lq8739ka

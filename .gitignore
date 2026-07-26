@@ -149,3 +149,7 @@ settings.conf
 **/cache/
 **/data/
 **/DataProtection/
+
+# Segreti: config SOPS (solo chiave pubblica) e falsi positivi gitleaks
+!.sops.yaml
+!.gitleaksignore
