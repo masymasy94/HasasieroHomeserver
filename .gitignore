@@ -51,13 +51,6 @@
 !homeserver/qbittorrent/config/custom-cont-init.d/
 !homeserver/qbittorrent/config/custom-cont-init.d/*.sh
 
-!homeserver/docker-agent/
-!homeserver/docker-agent/Dockerfile
-!homeserver/docker-agent/requirements.txt
-!homeserver/docker-agent/app.py
-!homeserver/docker-agent/templates/
-!homeserver/docker-agent/templates/index.html
-
 # ========================================
 # apps/ — multi-app deployment platform
 # ========================================
@@ -114,6 +107,10 @@
 # Root files
 !.gitignore
 !README.md
+
+# Istruzioni per Claude (una per stack)
+!CLAUDE.md
+!apps/CLAUDE.md
 
 # ========================================
 # Deployments — only compose files, no secrets
