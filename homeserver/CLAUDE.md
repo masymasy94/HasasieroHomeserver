@@ -54,7 +54,11 @@ se un deploy resta in coda, `COMPOSE_PROFILES=runner docker compose up -d github
 
 ## Cartelle morte
 
-`docker-agent/` e `homeserver-mcp/` sono stati rimossi il 2026-07-26 (nessun riferimento in
-nessun compose). Restano morte e da valutare: `open-webui/` (891 MB), `netdata/`,
-`audiobookshelf/`, `ollama/`, `telegram-ollama-bot/`, `provoloni-countdown/`, `jellyfin-ts/`.
-Plex è stato rimosso del tutto: non reintrodurlo.
+Ripulite il 2026-07-26: `docker-agent/`, `homeserver-mcp/`, `ollama/`, `netdata/`,
+`audiobookshelf/`, `telegram-ollama-bot/`, `provoloni-countdown/`, `jellyfin-ts/` e
+`open-webui/` — nessuna aveva un riferimento in un compose. Copia di sicurezza in
+`~/attic/homeserver-cartelle-morte-2026-07-26.tar.gz`.
+
+Prima di aggiungere una cartella qui dentro, assicurati che un servizio la usi davvero: la
+regola è che ogni directory di questo stack compaia in `docker-compose.yml`. Plex e Ollama
+sono stati rimossi del tutto: non reintrodurli.

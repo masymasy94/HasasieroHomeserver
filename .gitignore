@@ -35,11 +35,6 @@
 !homeserver/jackett/config/cardigann/definitions/
 !homeserver/jackett/config/cardigann/definitions/*.yml
 
-!homeserver/telegram-ollama-bot/
-!homeserver/telegram-ollama-bot/bot.py
-!homeserver/telegram-ollama-bot/requirements.txt
-!homeserver/telegram-ollama-bot/Dockerfile
-!homeserver/telegram-ollama-bot/config.env.example
 
 !homeserver/github-runner/
 !homeserver/github-runner/Dockerfile

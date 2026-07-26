@@ -62,12 +62,6 @@
         container: nut
 
 - AI:
-    - Open WebUI:
-        icon: open-webui
-        href: http://192.168.3.54:8080
-        description: Chat Interface
-        server: local
-        container: open-webui
     - Terminal:
         icon: terminal
         href: http://192.168.3.54:8088
