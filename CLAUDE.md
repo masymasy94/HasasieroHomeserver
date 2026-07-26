@@ -26,6 +26,13 @@ lì dentro. Partire dal progetto carica entrambi e niente degli altri.
 `/` da 233 GB e `/mnt/hdd` da 916 GB (i dati grossi dei container stanno su `/mnt/hdd`).
 Il PC Windows `192.168.3.108` è il worker dei modelli locali (Ollama), spesso spento.
 
+## Questo repo è PUBBLICO
+
+`masymasy94/HasasieroHomeserver` è pubblico su GitHub: `homeserver/`, `apps/` e questo file
+finiscono online a ogni push. `dmforge`, `audiobruh` e `hasasierogpt` sono privati.
+Conseguenza: qui non vanno né segreti (i `.env` sono gitignorati, tienili così) né descrizioni
+di falle aperte o credenziali da ruotare. Quelle stanno nelle note locali.
+
 ## Convenzioni
 
 - Italiano nei commenti, nei doc e nei messaggi utente; codice minimale (niente

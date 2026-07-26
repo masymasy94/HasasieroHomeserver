@@ -20,11 +20,11 @@ profilo) ed esporta `COMPOSE_PROFILES`, così i servizi gated si ricreano anche 
 | `hasasierofy` | `masymasy94/Hasasierofy` | ha un suo `CLAUDE.md`: leggi quello |
 | `dndproject` | `masymasy94/DnDSupportProject` | |
 
-## Attenzione ai remote
+## Credenziali
 
-I remote dei cloni in `deployments/` contengono un **PAT GitHub in chiaro**. Se ti capita
-sotto gli occhi, va rotato e sostituito con SSH o un credential helper — non copiarlo
-altrove e non stamparlo.
+Le credenziali dei cloni in `deployments/` stanno nella configurazione git locale, che è
+esclusa dalla lettura (`permissions.deny` in `~/.claude/settings.json`). Non stamparle, non
+copiarle nei file e non citarle nei commit: **questo repo è pubblico**.
 
 ## Homepage
 
