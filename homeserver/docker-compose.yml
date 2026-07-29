@@ -400,6 +400,15 @@ services:
   # vault e la deroga tolta.
   # Il container monta la chiave age privata: tenerlo spento quando non serve
   # (`docker compose stop secrets-ui`) riduce la finestra di esposizione.
+  #
+  # DAL 29/07 MONTA ANCHE /var/run/docker.sock, per ricreare i container dopo un
+  # salvataggio (SECRETS_UI_REDEPLOY). Il socket docker equivale a root sull'host:
+  # non è un permesso in più, è il permesso massimo. Sommato a SECRETS_UI_NO_AUTH,
+  # chiunque sia nel tailnet — 5 nodi, 3 fermi da mesi — passa da "legge i segreti"
+  # a "è root su questa macchina". Tenerlo acceso solo quando serve non è più un
+  # consiglio, è la mitigazione principale.
+  # Se un giorno dà fastidio: togli il mount del socket e torna a lanciare a mano
+  # `sops exec-env env.sops.yaml 'docker compose up -d prowlarr-search'`.
   secrets-ui:
     build: ./secrets-ui
     container_name: secrets-ui
@@ -409,7 +418,10 @@ services:
     ports:
       - "${SECRETS_UI_BIND:-127.0.0.1}:8787:8787"
     # Stesso uid dell'host: i vault riscritti restano di masy, non di root.
+    # group_add: il gid del gruppo docker dell'host, per arrivare al socket.
     user: "1000:1000"
+    group_add:
+      - "984"
     security_opt:
       - no-new-privileges:true
     environment:
@@ -417,14 +429,21 @@ services:
       - SECRETS_HOST=0.0.0.0
       # Deroga: davanti c'è il tailnet, vedi il commento sopra.
       - SECRETS_UI_NO_AUTH=1
-      - SECRETS_ROOT=/vaults
+      - SECRETS_ROOT=/home/masy/Desktop/docker
       - SOPS_AGE_KEY_FILE=/keys/keys.txt
+      # Servizi da ricreare dopo un salvataggio, spazio-separati. Solo quelli che
+      # leggono i segreti all'AVVIO: prowlarr-search espande nginx.conf con
+      # envsubst quando parte, quindi il vault nuovo non lo tocca finché è su.
+      # NON metterci secrets-ui: si ammazzerebbe a metà richiesta.
+      - SECRETS_UI_REDEPLOY=prowlarr-search
     volumes:
-      # Tutta la radice di sviluppo: i vault sono sparsi per stack e l'elenco
-      # cresce man mano che se ne cifrano altri. A limitare cosa è scrivibile
-      # ci pensa la whitelist di app.py, che accetta solo gli env.sops.yaml.
-      - /home/masy/Desktop/docker:/vaults
+      # Montata al MEDESIMO path dell'host, non sotto /vaults: i bind mount
+      # relativi del compose li risolve il client, e devono venire fuori path
+      # che esistono sull'host — altrimenti compose monta directory inventate.
+      - /home/masy/Desktop/docker:/home/masy/Desktop/docker
       - /home/masy/.config/sops/age/keys.txt:/keys/keys.txt:ro
+      # Il socket docker è root sull'host. Vedi il commento in cima allo stack.
+      - /var/run/docker.sock:/var/run/docker.sock
 
   # === WATCHTOWER (Auto-update) ===
   watchtower:
