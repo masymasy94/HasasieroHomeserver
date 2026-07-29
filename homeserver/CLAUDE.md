@@ -54,10 +54,16 @@ se un deploy resta in coda, `COMPOSE_PROFILES=runner docker compose up -d github
 
 ## Cartelle morte
 
-Ripulite il 2026-07-26: `docker-agent/`, `homeserver-mcp/`, `ollama/`, `netdata/`,
-`audiobookshelf/`, `telegram-ollama-bot/`, `provoloni-countdown/`, `jellyfin-ts/` e
-`open-webui/` — nessuna aveva un riferimento in un compose. Copia di sicurezza in
-`~/attic/homeserver-cartelle-morte-2026-07-26.tar.gz`.
+Uscite da git il 2026-07-26, **cancellate dal disco il 2026-07-29**: `docker-agent/`,
+`homeserver-mcp/`, `ollama/`, `netdata/`, `audiobookshelf/`, `telegram-ollama-bot/`,
+`provoloni-countdown/`, `jellyfin-ts/` e `open-webui/` — nessuna aveva un riferimento in un
+compose né un container, nemmeno fermo. Copia di sicurezza in
+`~/attic/homeserver-cartelle-morte-2026-07-26.tar.gz`, che però **non contiene `open-webui/`**
+(erano 891 MB di dati runtime, esclusi di proposito).
+
+Alcune sottocartelle erano **root-owned** (`netdata/cache`, `netdata/lib`, `jellyfin-ts/state`):
+scritte dai container come root, non cancellabili da `masy`. Si passa da un container root,
+`docker run --rm -v <dir>:/w -w /w alpine sh -c "rm -r ..."`.
 
 Prima di aggiungere una cartella qui dentro, assicurati che un servizio la usi davvero: la
 regola è che ogni directory di questo stack compaia in `docker-compose.yml`. Plex e Ollama
