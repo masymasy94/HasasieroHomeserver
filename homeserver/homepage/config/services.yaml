@@ -105,3 +105,12 @@
         server: local
         container: audiobruh
 
+    # Pubblicato solo sull'IP Tailscale: il link funziona dai dispositivi del
+    # tailnet, non da un device solo-LAN.
+    - Secrets UI:
+        icon: mdi-key-chain
+        href: http://100.103.209.89:8787
+        description: "Editor vault sops | solo via Tailscale"
+        server: local
+        container: secrets-ui
+

@@ -1,2 +1,0 @@
-const API_KEY = 'your-prowlarr-api-key-here';
-const JACKETT_KEY = 'your-jackett-api-key-here';

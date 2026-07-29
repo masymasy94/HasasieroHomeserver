@@ -204,6 +204,12 @@ services:
       - "com.centurylinklabs.watchtower.depends-on=gluetun"
 
   # === PROWLARR SEARCH (Custom Search UI) ===
+  # Le chiavi API di Prowlarr e Jackett NON stanno piu' nel frontend: nginx le
+  # inietta lato server (header per Prowlarr, query string per Jackett), quindi
+  # il browser non le vede. nginx.conf e' montato come template ed espanso da
+  # envsubst all'avvio; NGINX_ENVSUBST_FILTER evita che si mangi $host e $args.
+  # Va deployato con `sops exec-env env.sops.yaml 'docker compose up -d prowlarr-search'`,
+  # altrimenti le due variabili arrivano vuote e le ricerche tornano 401.
   prowlarr-search:
     image: nginx:alpine
     container_name: prowlarr-search
@@ -212,9 +218,13 @@ services:
       - home-net
     ports:
       - "192.168.3.54:8888:80"
+    environment:
+      - PROWLARR_API_KEY=${PROWLARR_API_KEY}
+      - JACKETT_API_KEY=${JACKETT_API_KEY}
+      - NGINX_ENVSUBST_FILTER=^(PROWLARR_API_KEY|JACKETT_API_KEY)$$
     volumes:
       - ./prowlarr-search:/usr/share/nginx/html:ro
-      - ./prowlarr-search/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./prowlarr-search/nginx.conf:/etc/nginx/templates/default.conf.template:ro
 
   # === JACKETT (Torrent Indexer Proxy) ===
   jackett:
@@ -379,6 +389,42 @@ services:
       - ./cloudflared:/etc/cloudflared:ro
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
+
+  # === SECRETS UI (editor web per i vault sops) ===
+  # Sorgente in ./secrets-ui, fuori da git di proposito.
+  # SECRETS_UI_BIND decide su quale interfaccia pubblicare: senza, resta su
+  # 127.0.0.1, che è il default sicuro. Va impostata solo a un indirizzo che sia
+  # già di per sé un confine di autenticazione. SECRETS_UI_NO_AUTH=1 vale solo
+  # in quel caso: con un bind raggiungibile e la deroga attiva non c'è nulla
+  # davanti ai segreti. Per l'accesso autenticato serve SECRETS_UI_PASSWORD nel
+  # vault e la deroga tolta.
+  # Il container monta la chiave age privata: tenerlo spento quando non serve
+  # (`docker compose stop secrets-ui`) riduce la finestra di esposizione.
+  secrets-ui:
+    build: ./secrets-ui
+    container_name: secrets-ui
+    restart: unless-stopped
+    networks:
+      - home-net
+    ports:
+      - "${SECRETS_UI_BIND:-127.0.0.1}:8787:8787"
+    # Stesso uid dell'host: i vault riscritti restano di masy, non di root.
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - TZ=Europe/Rome
+      - SECRETS_HOST=0.0.0.0
+      # Deroga: davanti c'è il tailnet, vedi il commento sopra.
+      - SECRETS_UI_NO_AUTH=1
+      - SECRETS_ROOT=/vaults
+      - SOPS_AGE_KEY_FILE=/keys/keys.txt
+    volumes:
+      # Tutta la radice di sviluppo: i vault sono sparsi per stack e l'elenco
+      # cresce man mano che se ne cifrano altri. A limitare cosa è scrivibile
+      # ci pensa la whitelist di app.py, che accetta solo gli env.sops.yaml.
+      - /home/masy/Desktop/docker:/vaults
+      - /home/masy/.config/sops/age/keys.txt:/keys/keys.txt:ro
 
   # === WATCHTOWER (Auto-update) ===
   watchtower:

@@ -130,7 +130,7 @@
   <div id="progress" class="progress"></div>
   <div id="results"></div>
 </div>
-<script src="config.js"></script>
+<!-- Niente config.js: le chiavi API le inietta nginx lato server (vedi nginx.conf). -->
 <script>
 const BATCH_SIZE = 5;
 const PROWLARR_LIMIT = 200;
@@ -397,7 +397,7 @@ async function loadIndexers() {
   allIndexers = [];
 
   try {
-    const res = await fetch(`/api/v1/indexer?apikey=${API_KEY}`);
+    const res = await fetch(`/api/v1/indexer`);
     if (res.ok) {
       const prowlarr = await res.json();
       prowlarr
@@ -495,7 +495,7 @@ function togglePanel() {
 async function searchBatch(query, indexerIds, categories) {
   const ids = indexerIds.map(id => `indexerIds=${id}`).join('&');
   const cats = categories.length > 0 ? '&' + categories.map(c => `categories=${c}`).join('&') : '';
-  const url = `/api/v1/search?query=${encodeURIComponent(query)}&type=search&limit=${PROWLARR_LIMIT}&${ids}${cats}&apikey=${API_KEY}`;
+  const url = `/api/v1/search?query=${encodeURIComponent(query)}&type=search&limit=${PROWLARR_LIMIT}&${ids}${cats}`;
   const res = await fetch(url);
   if (!res.ok) return [];
   return await res.json();
@@ -504,7 +504,7 @@ async function searchBatch(query, indexerIds, categories) {
 async function searchJackett(query, indexerId, categories) {
   try {
     const cats = categories.length > 0 ? '&' + categories.map(c => `Category[]=${c}`).join('&') : '';
-    const url = `/jackett/indexers/${indexerId}/results?apikey=${JACKETT_KEY}&Query=${encodeURIComponent(query)}&_results=${JACKETT_LIMIT}${cats}`;
+    const url = `/jackett/indexers/${indexerId}/results?Query=${encodeURIComponent(query)}&_results=${JACKETT_LIMIT}${cats}`;
     const res = await fetch(url);
     if (!res.ok) return [];
     const json = await res.json();
