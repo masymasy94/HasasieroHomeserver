@@ -149,5 +149,7 @@ settings.conf
 !.sops.yaml
 !.gitleaksignore
 
-# Istruzioni per Claude: restano LOCALI, questo repo e pubblico
-/CLAUDE.md
+# Istruzioni per Claude: restano LOCALI, questo repo e pubblico. Senza slash iniziale
+# vale a ogni livello (radice, apps/, homeserver/). I repo annidati hanno il loro .git,
+# quindi il CLAUDE.md di dmforge & co. non e toccato da questa regola.
+CLAUDE.md
