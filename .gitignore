@@ -148,3 +148,6 @@ settings.conf
 # Segreti: config SOPS (solo chiave pubblica) e falsi positivi gitleaks
 !.sops.yaml
 !.gitleaksignore
+
+# Istruzioni per Claude: restano LOCALI, questo repo e pubblico
+/CLAUDE.md
