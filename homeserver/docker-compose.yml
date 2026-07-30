@@ -162,6 +162,8 @@ services:
       # qBittorrent torrent port (routed through VPN)
       - "6881:6881"
       - "6881:6881/udp"
+      # AudioBruh (stack a parte, gira nella netns di gluetun dal 2026-07-30)
+      - "8680:8080"
     environment:
       - TZ=Europe/Rome
       - VPN_SERVICE_PROVIDER=nordvpn
@@ -171,6 +173,16 @@ services:
       # HTTP proxy on :8888 (home-net only, no host port): lets other stacks
       # (AudioBruh) tunnel through the VPN without NordVPN service creds
       - HTTPPROXY=on
+      # DNS via AdGuard invece del DoT di default. Vale per TUTTI i container
+      # in questa netns — qbittorrent, prowlarr, flaresolverr, slskd, audiobruh
+      # — non solo per audiobruh: i loro nomi ora li risolve AdGuard, in chiaro
+      # sulla LAN, quindi visibili al router e al provider. In cambio si applica
+      # il filtraggio di AdGuard. Per tornare indietro: togli queste due righe.
+      - DOT=off
+      - DNS_ADDRESS=192.168.3.54
+      # Senza questa, il firewall di gluetun blocca la LAN e AdGuard e'
+      # irraggiungibile: ogni risoluzione fallirebbe.
+      - FIREWALL_OUTBOUND_SUBNETS=192.168.3.0/24
     sysctls:
       - net.ipv4.conf.all.src_valid_mark=1
     volumes:

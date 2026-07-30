@@ -18,9 +18,20 @@ se un deploy resta in coda, `COMPOSE_PROFILES=runner docker compose up -d github
 
 ## Rete: le trappole che tornano sempre
 
-- **Dipendenti dalla netns di gluetun** (`qbittorrent`, `prowlarr`, `flaresolverr`): dopo
-  ogni restart di gluetun vanno riavviati, altrimenti restano orfani su una netns morta —
-  in LISTEN ma irraggiungibili. `docker restart qbittorrent prowlarr flaresolverr`.
+- **Dipendenti dalla netns di gluetun**: `qbittorrent`, `prowlarr`, `flaresolverr`, più due
+  da altri stack, `hasasierofy-slskd-1` e **`audiobruh`** (dal 2026-07-30). Dopo ogni
+  restart di gluetun vanno riavviati, altrimenti restano orfani su una netns morta — in
+  LISTEN ma irraggiungibili. `docker restart qbittorrent prowlarr flaresolverr`.
+  **Se gluetun è stato ricreato e non solo riavviato, `docker restart` NON basta**: i
+  dipendenti puntano al vecchio container id e falliscono con *"joining network namespace:
+  No such container"*. Vanno **ricreati**, ognuno dal compose del suo stack:
+  `docker compose up -d --force-recreate qbittorrent prowlarr flaresolverr`, poi `slskd`
+  da `apps/deployments/hasasierofy` e `audiobruh` dal suo.
+- **Il DNS di tutta la netns passa da AdGuard** (`DOT=off` + `DNS_ADDRESS=192.168.3.54`,
+  dal 2026-07-30), non più dal DoT di default di gluetun. Vale per tutti i container qui
+  sopra: i nomi escono in chiaro sulla LAN verso AdGuard, quindi visibili al router e al
+  provider, in cambio del filtraggio. `FIREWALL_OUTBOUND_SUBNETS=192.168.3.0/24` è ciò che
+  permette a gluetun di raggiungere AdGuard: toglierla fa fallire ogni risoluzione.
 - `autoheal` **non** copre questo caso: se il suo restart fallisce, con `unless-stopped` il
   container resta Exited per sempre. Dopo un restart di gluetun guarda `docker ps -a`, non
   solo `docker ps`.
