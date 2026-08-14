@@ -369,6 +369,8 @@ services:
       - PORT=8080
       - LLM_PROVIDER=openrouter
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      # Opzionale: senza, FLUX genera da anonimo (code e 429 piu' frequenti).
+      - HF_TOKEN=${HF_TOKEN}
     volumes:
       - solo-dm-campagne:/app/campagne
       - solo-dm-personaggi:/app/personaggi
@@ -477,7 +479,7 @@ services:
       # leggono i segreti all'AVVIO: prowlarr-search espande nginx.conf con
       # envsubst quando parte, quindi il vault nuovo non lo tocca finché è su.
       # NON metterci secrets-ui: si ammazzerebbe a metà richiesta.
-      - SECRETS_UI_REDEPLOY=prowlarr-search
+      - SECRETS_UI_REDEPLOY=prowlarr-search solo-dm
     volumes:
       # Montata al MEDESIMO path dell'host, non sotto /vaults: i bind mount
       # relativi del compose li risolve il client, e devono venire fuori path
