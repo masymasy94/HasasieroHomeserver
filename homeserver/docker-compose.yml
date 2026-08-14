@@ -411,8 +411,11 @@ services:
       # Production stacks bind-mount /mnt/hdd via the host docker daemon, so
       # they don't depend on this — only the runner's own filesystem view does.
       - /mnt/hdd:/mnt/hdd:ro
-    profiles:
-      - runner
+    # Niente `profiles`: il runner riparte con lo stack, altrimenti dopo un
+    # `docker compose up -d` senza COMPOSE_PROFILES i deploy restano in coda
+    # senza che nessuno se ne accorga. Il profilo serviva a non tenere accesi
+    # 1.9 GB di listener: ora l'entrypoint registra solo i repo che hanno
+    # davvero dei workflow, quindi il peso non c'e' piu' e il gate nemmeno.
 
   # === CLOUDFLARE TUNNEL ===
   # Serves: hasasierofy.fyi -> 192.168.3.201:8000 (hasasierofy api)

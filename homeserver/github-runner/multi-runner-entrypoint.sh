@@ -36,7 +36,17 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# --- Fetch all repos owned by the authenticated user ---
+# --- Does the repo actually have workflows? ---
+# Un runner registrato costa ~120 MB di RAM anche fermo. Senza questo filtro se
+# ne registravano 16, uno per repo, per DUE repo che fanno CI: 1.9 GB, di cui
+# 1.7 per aspettare lavoro che non arriva. 404 dal contents endpoint = nessuna
+# cartella .github/workflows.
+has_workflows() {
+  curl -sf -o /dev/null -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+    "https://api.github.com/repos/$1/contents/.github/workflows"
+}
+
+# --- Fetch the repos owned by the user that have workflows ---
 fetch_repos() {
   local page=1
   local all=""
@@ -50,7 +60,13 @@ fetch_repos() {
     (( $(echo "$batch" | wc -l) < 100 )) && break
     ((page++))
   done
-  echo "$all" | sort -u | sed '/^$/d'
+  # `|| true`: con set -e, has_workflows che fallisce sull'ultimo comando del
+  # corpo del while abortirebbe lo script invece di saltare il repo.
+  local repo
+  while read -r repo; do
+    [[ -z "$repo" ]] && continue
+    has_workflows "$repo" && echo "$repo" || true
+  done < <(echo "$all" | sort -u | sed '/^$/d')
 }
 
 # --- Register and start a runner for one repo ---
