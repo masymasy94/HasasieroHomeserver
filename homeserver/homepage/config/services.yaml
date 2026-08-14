@@ -76,12 +76,12 @@
         server: local
         container: nut
 
-    - DMForge:
+    - Solo DM:
         icon: mdi-dice-d20
         href: http://192.168.3.54:8600
-        description: AI Dungeon Master D&D 5e
+        description: D&D 5e in solitaria, il DM e' il modello
         server: local
-        container: dmforge
+        container: solo-dm
 
 - Apps:
     - Hasasierofy:

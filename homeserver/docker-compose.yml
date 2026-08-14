@@ -346,6 +346,33 @@ services:
       - animehub-data:/data
       - /mnt/nas/Seagate_Backup_Plus_Drive/Anime:/downloads
 
+  # === SOLO DM (D&D 5e giocato da soli, il DM e' il modello) ===
+  # Subentra a dmforge, rimosso il 2026-08-14: stessa porta 8600, stessa voce
+  # su homepage. Il compendio SRD e' dentro l'immagine (ricostruito dai seed a
+  # build-time), quindi qui persistono solo i dati vivi: campagne e personaggi.
+  # OPENROUTER_API_KEY arriva dal vault, non dal .env: l'app legge il file se
+  # c'e' e altrimenti l'ambiente.
+  # Watchtower spento di proposito: a rilasciare e' il workflow del repo, sui
+  # commit che contengono RELEASE.
+  solo-dm:
+    image: ghcr.io/masymasy94/dnd5e-solo-dm:latest
+    container_name: solo-dm
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
+    networks:
+      - home-net
+    ports:
+      - "192.168.3.54:8600:8080"
+    environment:
+      - TZ=Europe/Rome
+      - PORT=8080
+      - LLM_PROVIDER=openrouter
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+    volumes:
+      - solo-dm-campagne:/app/campagne
+      - solo-dm-personaggi:/app/personaggi
+
   # === DOCKER REGISTRY (Local Image Cache) ===
   registry:
     image: registry:2
@@ -492,3 +519,5 @@ services:
 volumes:
   registry-data:
   animehub-data:
+  solo-dm-campagne:
+  solo-dm-personaggi:
