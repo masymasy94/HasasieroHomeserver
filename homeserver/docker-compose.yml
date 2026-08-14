@@ -371,6 +371,11 @@ services:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       # Opzionale: senza, FLUX genera da anonimo (code e 429 piu' frequenti).
       - HF_TOKEN=${HF_TOKEN}
+      # Groq come ripiego: il codice cerca la chiave sotto il nome API_KEY
+      # (narratore/provider.mjs), nel vault sta come GROQ_API_KEY per non
+      # confonderla con le altre. Inerte finche' LLM_PROVIDER resta openrouter:
+      # per passare a Groq basta cambiare quella riga, senza toccare il codice.
+      - API_KEY=${GROQ_API_KEY}
     volumes:
       - solo-dm-campagne:/app/campagne
       - solo-dm-personaggi:/app/personaggi
