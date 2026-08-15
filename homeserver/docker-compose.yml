@@ -367,8 +367,37 @@ services:
     environment:
       - TZ=Europe/Rome
       - PORT=8080
-      - LLM_PROVIDER=openrouter
+      - LLM_PROVIDER=locale
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      # Worker locale (Ollama sul PC .108, spesso spento). LLM_LOCALE_URL e'
+      # l'ORIGINE: il codice ci aggiunge /v1/chat/completions da se'. Senza
+      # questa riga 'locale' punta a localhost DENTRO il container, dove non
+      # c'e' nessun Ollama. ATTIVA dal 2026-08-14 (provider = locale).
+      - LLM_LOCALE_URL=http://192.168.3.108:11434
+      # Le DUE righe del locale vanno insieme: LLM_PROVIDER=locale qui sopra e
+      # LLM_MODELLO qui sotto. LLM_MODELLO vale per QUALSIASI provider, quindi
+      # tornando a openrouter va ricommentata o un nome di modello Ollama
+      # finirebbe in una chiamata a OpenRouter; e senza, 'locale' userebbe il
+      # default del codice, che era il q3kxl (rimosso dal worker il 2026-08-15).
+      # Provato il 2026-08-14 con questo q4 (46,1 GB): genera a 12,4 tok/s,
+      # /api/esplora (tool_choice=required) 22 s, /api/narra 14 s.
+      # `capabilities` dice solo `completion` ma i tool li chiama davvero.
+      # Il COLD LOAD pero' costa fra 226 e 353 s (rimisurato il 2026-08-14, la
+      # forbice e' larga) e Ollama scarica il modello dopo cinque minuti di
+      # inattivita'. Dal commit ff2d7d0 l'app, con provider `locale`, manda
+      # all'avvio una /api/generate nativa con keep_alive:-1 che lo pinna per
+      # sempre (narratore/scalda.mjs) — e riprova ogni 5 min se il .108 e'
+      # spento. Quindi il caricamento si paga UNA volta per boot del worker, e
+      # il log del container dice «residente sul worker» quando e' pronto.
+      # Attenzione: se il worker resta spento, la generazione fallisce — per
+      # tornare al cloud si rimettono openrouter qui sopra e il commento qui.
+      # Variante con contesto NATIVO 262144 (256K) cotto nel Modelfile
+      # (PARAMETER num_ctx), creata su .108 il 2026-08-15 con
+      #   POST /api/create {from: qwen3-next-80b-a3b:q4kxl, parameters:{num_ctx:262144}}
+      # Serve la VARIANTE perche' le chiamate /v1 di solo-dm non accettano num_ctx:
+      # senza il default cotto, Ollama ricaricherebbe a 8192 a ogni richiesta (e 8K
+      # non regge la narrazione). 256K sta in 64GB di RAM (KV ~1,5 GB, arch. ibrida).
+      - LLM_MODELLO=qwen3-next-80b-a3b:q4kxl-256k
       # Opzionale: senza, FLUX genera da anonimo (code e 429 piu' frequenti).
       - HF_TOKEN=${HF_TOKEN}
       # Groq come ripiego: il codice cerca la chiave sotto il nome API_KEY
