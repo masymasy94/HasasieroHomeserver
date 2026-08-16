@@ -400,6 +400,13 @@ services:
       - LLM_MODELLO=qwen3-next-80b-a3b:q4kxl-256k
       # Opzionale: senza, FLUX genera da anonimo (code e 429 piu' frequenti).
       - HF_TOKEN=${HF_TOKEN}
+      # Illustrazioni FLUX: Cloudflare Workers AI flux-1-schnell e' il PRIMARIO
+      # (10k neuron/giorno gratis; HF-only con quota esaurita non basta). Il
+      # token nel vault sta come CLOUDFLARE_API_KEY -> lo passo col nome che il
+      # codice legge (immagini/provider.mjs: CLOUDFLARE_API_TOKEN). L'account id
+      # (non un segreto) sta nel vault come CLOUDFLARE_ACCOUNT_ID.
+      - CLOUDFLARE_ACCOUNT_ID=${CLOUDFLARE_ACCOUNT_ID}
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_KEY}
       # Groq come ripiego: il codice cerca la chiave sotto il nome API_KEY
       # (narratore/provider.mjs), nel vault sta come GROQ_API_KEY per non
       # confonderla con le altre. Inerte finche' LLM_PROVIDER resta openrouter:
