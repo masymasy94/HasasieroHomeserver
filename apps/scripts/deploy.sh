@@ -146,7 +146,8 @@ if [[ "${IP_ALIAS_ENABLED:-false}" == "true" ]] && [[ -n "$APP_IP" ]]; then
     # Add port 80 mapping to frontend service if it doesn't already expose port 80
     # This ensures http://<app-ip>/ works regardless of the app's internal port
     if [[ "$FRONTEND_PORT" != "80" ]] && [[ -n "$FRONTEND_SERVICE" ]]; then
-        local has_80
+        # nota: siamo nel corpo dello script, non in una funzione: niente `local`
+        # (con `set -e` un `local` qui aborta il deploy per ogni app con frontend != porta 80)
         has_80=$(yq -r ".services.\"${FRONTEND_SERVICE}\".ports[]? | select(test(\"(^|:)80(/|$)\"))" "$DEPLOY_COMPOSE" 2>/dev/null)
         if [[ -z "$has_80" ]]; then
             info "Adding port 80 → ${FRONTEND_PORT} mapping to ${FRONTEND_SERVICE}"
@@ -211,6 +212,16 @@ fi
 if [[ "$USE_REGISTRY" == "true" ]] && [[ -n "${IMAGE_TAG:-}" ]]; then
     info "Pinning IMAGE_TAG=${IMAGE_TAG} in deploy compose"
     sed -i "s/\${IMAGE_TAG:-latest}/${IMAGE_TAG}/g" "$DEPLOY_COMPOSE"
+fi
+
+# ─── Step 7c: Assegna l'IP dedicato PRIMA di `up` ───
+# I port sono gia' ribindati su APP_IP (Step 6); se l'alias non esiste ancora al
+# momento dell'`up`, Docker fallisce con "cannot assign requested address" e il
+# container resta Created. Al primo deploy di un'app nuova l'IP non c'e' ancora, quindi
+# va aggiunto qui, non allo Step 10b (dopo l'up). add_ip_alias e' idempotente.
+if [[ "${IP_ALIAS_ENABLED:-false}" == "true" ]] && [[ -n "${APP_IP:-}" ]]; then
+    info "Pre-assegno l'IP dedicato ${APP_IP} prima dell'avvio..."
+    add_ip_alias "$APP_IP" || warn "Impossibile assegnare ${APP_IP} in anticipo; il bind potrebbe fallire"
 fi
 
 # ─── Step 8: Start ───
