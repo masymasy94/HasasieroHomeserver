@@ -412,9 +412,32 @@ services:
       # confonderla con le altre. Inerte finche' LLM_PROVIDER resta openrouter:
       # per passare a Groq basta cambiare quella riga, senza toccare il codice.
       - API_KEY=${GROQ_API_KEY}
+      # OpenCode Zen (free tier) via il servizio opencode-proxy qui sotto.
+      # PROXY_API_KEY protegge solo l'endpoint locale del proxy (dal vault).
+      # PROXY_URL e' l'ORIGINE: il codice aggiunge /v1/chat/completions da se'.
+      # Non e' un segreto -> letterale qui, come LLM_LOCALE_URL. Il provider si
+      # sceglie dalla UI (Impostazioni -> "OpenCode (free)"), non da qui.
+      - PROXY_API_KEY=${PROXY_API_KEY}
+      - PROXY_URL=http://opencode-proxy:6446
     volumes:
       - solo-dm-campagne:/app/campagne
       - solo-dm-personaggi:/app/personaggi
+
+  # === OPENCODE PROXY (OpenCode Zen free tier, provider di solo-dm) ===
+  # Endpoint OpenAI-compatibile su :6446, inoltra a opencode.ai/zen con
+  # Bearer public. Genera la sua api-key in /keys/api-keys.json al primo avvio
+  # (persistita nel bind ./opencode-proxy-keys). Nessuna porta pubblicata: lo
+  # raggiunge solo solo-dm per nome DNS su home-net.
+  opencode-proxy:
+    build: ./opencode-free-proxy
+    container_name: opencode-proxy
+    restart: unless-stopped
+    networks:
+      - home-net
+    environment:
+      - KEYS_FILE=/keys/api-keys.json
+    volumes:
+      - ./opencode-proxy-keys:/keys
 
   # === DOCKER REGISTRY (Local Image Cache) ===
   registry:
