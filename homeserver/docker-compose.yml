@@ -8,7 +8,7 @@ services:
   # /dev/dri/renderD129 (Intel iGPU) is kept for VAAPI fallback decode only.
   # renderD128 is the NVIDIA dGPU — used via CUDA/NVENC, NOT via VAAPI.
   jellyfin:
-    image: jellyfin/jellyfin:latest
+    image: jellyfin/jellyfin:10.11.11  # pin: aggiorna a mano, non piu' :latest
     container_name: jellyfin
     restart: unless-stopped
     runtime: nvidia
@@ -36,6 +36,11 @@ services:
       - /mnt/nas/Seagate_Backup_Plus_Drive/Film Disney:/media/film-disney
       - /mnt/nas/Seagate_Backup_Plus_Drive/Film Horror:/media/film-horror
       - /mnt/nas/Seagate_Backup_Plus_Drive/SerieTV:/media/serietv
+    tmpfs:
+      # transcodifica in RAM: primo segmento piu' veloce, zero usura SSD.
+      # cap 16g: se si riempie (2-3 film transcodificati insieme) il transcode
+      # fallisce ma NON manda in OOM l'host. Alza/abbassa qui.
+      - /cache/transcodes:size=16g
 
   # === PORTAINER ===
   portainer:
@@ -401,6 +406,10 @@ services:
       # confonderla con le altre. Inerte finche' LLM_PROVIDER resta openrouter:
       # per passare a Groq basta cambiare quella riga, senza toccare il codice.
       - API_KEY=${GROQ_API_KEY}
+      # Worker mappe .108 (Fase 2, docs/worker-mappe-108.md di solo-dm): fondi
+      # img2img dei dungeon. Non un segreto (LAN, come LLM_LOCALE_URL); .108 spento
+      # -> generaFondo no-op, ritenta al refill immagini. Porta 8600 sul .108.
+      - MAPPE_WORKER_URL=http://192.168.3.108:8600
     volumes:
       - solo-dm-campagne:/app/campagne
       - solo-dm-personaggi:/app/personaggi
