@@ -71,7 +71,7 @@
     - HasasieroBookasiero:
         icon: mdi-book-search
         href: http://192.168.3.54:8085
-        description: Cerca, scarica, manda al Kindle
+        description: Cerca su 4 sorgenti, leggi nel sito, manda al Kindle
         server: local
         container: bookasiero
 
