@@ -107,18 +107,8 @@
 !CLAUDE.md
 !apps/CLAUDE.md
 
-# ========================================
-# Deployments — only compose files, no secrets
-# ========================================
-!apps/deployments/
-!apps/deployments/*/
-!apps/deployments/*/docker-compose.yml
-!apps/deployments/*/docker-compose.deploy.yml
-!apps/deployments/*/CLAUDE.md
-!apps/deployments/*/README.md
-!apps/deployments/*/deploy.sh
-!apps/deployments/*/start.sh
-!apps/deployments/*/build-allinone.sh
+# Deployments: cloni di altri repo (hanno il loro .git), qui non si tracciano
+apps/deployments/
 
 # ========================================
 # Explicitly exclude secrets & heavy data

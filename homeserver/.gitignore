@@ -14,7 +14,6 @@
 !docker-compose.yml
 !.env.example
 !README.md
-!CLAUDE.md
 
 # Homepage dashboard config
 !homepage/
@@ -50,11 +49,6 @@
 !github-runner/multi-runner-entrypoint.sh
 !github-runner/entrypoint-wrapper.sh
 
-# AdGuard Home config
-!adguardhome/
-!adguardhome/conf/
-!adguardhome/conf/AdGuardHome.yaml
-
 # Cloudflare Tunnel (config only — credentials *.json / cert *.pem stay ignored)
 !cloudflared/
 !cloudflared/config.yml
@@ -87,3 +81,9 @@ config.env
 **/cache/
 **/data/
 **/DataProtection/
+
+# Repo PUBBLICO: restano solo in locale.
+# - AdGuardHome.yaml: AdGuard ci riscrive utenti e hash delle password del pannello.
+# - ilcorsaroverde.yml: il PHPSESSID statico diventa una sessione loggata col nostro account.
+adguardhome/
+jackett/config/cardigann/definitions/ilcorsaroverde.yml
