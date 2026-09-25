@@ -12,4 +12,8 @@ ingress:
   # so a missing/misapplied policy fails closed rather than exposing it.
   - hostname: audiobruh.hasasierofy.fyi
     service: http://192.168.3.54:8680
+  # masiero. Mockup statico TEMPORANEO (stack ../../masiero), pubblico di proposito.
+  # Teardown: togli questa riga + `docker compose down` nello stack.
+  - hostname: masiero.hasasierofy.fyi
+    service: http://192.168.3.54:8690
   - service: http_status:404
