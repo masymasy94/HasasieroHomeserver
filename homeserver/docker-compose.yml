@@ -32,15 +32,45 @@ services:
       - ./jellyfin/config:/config
       - ./jellyfin/cache:/cache
       - /mnt/nas/Seagate_Backup_Plus_Drive/Anime:/media/anime
-      - /mnt/nas/Seagate_Backup_Plus_Drive/Film:/media/film
-      - /mnt/nas/Seagate_Backup_Plus_Drive/Film Disney:/media/film-disney
-      - /mnt/nas/Seagate_Backup_Plus_Drive/Film Horror:/media/film-horror
-      - /mnt/nas/Seagate_Backup_Plus_Drive/SerieTV:/media/serietv
+      - /mnt/nas/Elements/Film:/media/film
+      - /mnt/nas/Elements/Film Disney:/media/film-disney
+      - /mnt/nas/Elements/Film Horror:/media/film-horror
+      - /mnt/nas/Elements/SerieTV:/media/serietv
     tmpfs:
       # transcodifica in RAM: primo segmento piu' veloce, zero usura SSD.
       # cap 16g: se si riempie (2-3 film transcodificati insieme) il transcode
       # fallisce ma NON manda in OOM l'host. Alza/abbassa qui.
       - /cache/transcodes:size=16g
+
+  # === PLEX ===
+  # Stesse librerie di Jellyfin (il NAS Seagate). Bridge come Jellyfin: la GDM
+  # discovery non funziona ma l'accesso diretto http://192.168.3.54:32400/web si.
+  # Prima visita: reclama il server dalla LAN (nessun PLEX_CLAIM serve in locale).
+  # HW transcode NON configurato: richiede Plex Pass. Per abilitarlo, replica il
+  # blocco runtime/devices/group_add di Jellyfin qui sopra.
+  # config in named volume (come registry/animehub/solo-dm), non nel repo.
+  # network_mode: host (non bridge come Jellyfin): sotto bridge Plex vede come IP
+  # sorgente il gateway NAT di Docker, considera ogni client "remoto" e risponde
+  # "not authorized". Con host vede l'IP LAN reale, e allowedNetworks (in
+  # Preferences.xml, 192.168.3.0/24) rende la LAN senza login. Abilita anche
+  # GDM/DLNA discovery. La porta 32400 resta la stessa.
+  plex:
+    image: linuxserver/plex:latest
+    container_name: plex
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - TZ=Europe/Rome
+      - PUID=1000
+      - PGID=1000
+      - VERSION=docker
+    volumes:
+      - plex-config:/config
+      - /mnt/nas/Seagate_Backup_Plus_Drive/Anime:/media/anime
+      - /mnt/nas/Elements/Film:/media/film
+      - /mnt/nas/Elements/Film Disney:/media/film-disney
+      - /mnt/nas/Elements/Film Horror:/media/film-horror
+      - /mnt/nas/Elements/SerieTV:/media/serietv
 
   # === PORTAINER ===
   portainer:
@@ -560,8 +590,33 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
+  # === SAMBA (condivisione dei due dischi USB in rete) ===
+  # Dal 2026-09-19 i dischi NON stanno piu' sul FritzBox: il suo driver NTFS
+  # corrompeva gli indici delle cartelle dell'Elements (846 danni trovati da
+  # chkdsk il 15/09). Ora sono in USB 3.0 sul server e li condivide samba.
+  # network host: serve a wsdd/avahi, cioe' a farli comparire da soli in Rete su
+  # Windows e nel Finder del Mac. Senza password ma solo dalla LAN (hosts allow).
+  # force user = root: i file sono di masy (uid 1000) e l'ospite e' nobody.
+  samba:
+    image: ghcr.io/servercontainers/samba:latest
+    container_name: samba
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - TZ=Europe/Rome
+      - SAMBA_CONF_SERVER_STRING=Hasasiero NAS
+      - SAMBA_GLOBAL_CONFIG_hosts_SPACE_allow=192.168.3.0/24 127.0.0.1
+      - SAMBA_GLOBAL_CONFIG_map_SPACE_to_SPACE_guest=Bad User
+      - SAMBA_GLOBAL_CONFIG_server_SPACE_min_SPACE_protocol=SMB2
+      - "SAMBA_VOLUME_CONFIG_elements=[Elements]; path=/shares/Elements; guest ok = yes; read only = no; browseable = yes; force user = root"
+      - "SAMBA_VOLUME_CONFIG_seagate=[Seagate]; path=/shares/Seagate; guest ok = yes; read only = no; browseable = yes; force user = root"
+    volumes:
+      - /mnt/nas/Elements:/shares/Elements
+      - /mnt/nas/Seagate_Backup_Plus_Drive:/shares/Seagate
+
 volumes:
   registry-data:
   animehub-data:
   solo-dm-campagne:
   solo-dm-personaggi:
+  plex-config:
