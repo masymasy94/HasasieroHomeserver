@@ -407,21 +407,18 @@ services:
       # e vanno a OpenRouter come lista `models` (failover nativo sul 429): per la
       # GENERAZIONE non si sceglie il modello a mano, e il check di SALUTE verifica
       # solo la CHIAVE (GET /key), NON un modello. Per il worker locale .108 basta
-      # rimettere `locale` qui (LLM_MODELLO qui sotto e' gia' il modello Ollama).
+      # rimettere `locale` qui (o usare il toggle in Impostazioni).
       - LLM_PROVIDER=openrouter
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      # Worker locale (Ollama sul PC .108, spesso spento) — FALLBACK. LLM_LOCALE_URL
-      # e' l'ORIGINE: il codice aggiunge /v1/chat/completions da se'. Senza, 'locale'
-      # punta a localhost DENTRO il container, dove non c'e' Ollama. Cold load
-      # 226-353 s, pagato una volta per boot: con provider `locale` scalda.mjs pinna
-      # il modello (keep_alive:-1) e riprova ogni 5 min se il .108 e' spento.
+      # Worker locale (Strata sul PC .108, spesso spento; dal 2026-10-11 al posto di
+      # Ollama) — FALLBACK. LLM_LOCALE_URL e' l'ORIGINE: il codice aggiunge
+      # /v1/chat/completions da se'. Senza, 'locale' punta a localhost DENTRO il
+      # container. Carico ~80 s: scalda.mjs usa /v1/load e riprova ogni 5 min se il
+      # .108 e' spento. Contesto 32K (n_ctx di Strata), i prompt stanno sotto i 2K.
       - LLM_LOCALE_URL=http://192.168.3.108:11434
       # LLM_MODELLO e' il modello del worker LOCALE (conta con LLM_PROVIDER=locale).
-      # Con openrouter e' INERTE: la generazione usa la lista :free dinamica e la
-      # salute verifica la chiave con GET /key — non serve piu' un id valido qui.
-      # 256K: variante cotta nel Modelfile su .108 (le /v1 di solo-dm non passano
-      # num_ctx; sta in 64GB di RAM).
-      - LLM_MODELLO=qwen3-next-80b-a3b:q4kxl-256k
+      # Strata serve un modello solo e ignora il nome; con openrouter e' INERTE.
+      - LLM_MODELLO=qwen3.8-flash-next-iq2_xs
       # Opzionale: senza, FLUX genera da anonimo (code e 429 piu' frequenti).
       - HF_TOKEN=${HF_TOKEN}
       # Illustrazioni FLUX: Cloudflare Workers AI flux-1-schnell e' il PRIMARIO
