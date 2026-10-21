@@ -16,4 +16,13 @@ ingress:
   # Teardown: togli questa riga + `docker compose down` nello stack.
   - hostname: masiero.hasasierofy.fyi
     service: http://192.168.3.54:8690
+  # bookasiero: solo il catalogo OPDS dei Kindle fuori casa, HTTP Basic con un
+  # segreto per Kindle. Niente Cloudflare Access: KOReader non sa fare il login.
+  # Tutto il resto di books.* e' 404 qui, e 404 anche nell'app (remoto.py, la
+  # seconda serratura sul header Cf-Connecting-IP).
+  - hostname: books.hasasierofy.fyi
+    path: ^/opds(/|$)
+    service: http://192.168.3.54:8085
+  - hostname: books.hasasierofy.fyi
+    service: http_status:404
   - service: http_status:404
