@@ -1,5 +1,10 @@
 FROM myoung34/github-runner:latest
 
+# Certificati eMudhra compromessi (ottobre 2026): Mozilla ha tolto la fiducia a
+# emSign ECC Root CA - G3, ma la base (Ubuntu 20.04) non riceve più ca-certificates.
+RUN sed -i 's|^mozilla/emSign_ECC_Root_CA_-_G3.crt|!&|' /etc/ca-certificates.conf && \
+    update-ca-certificates --fresh >/dev/null
+
 # Install JDK 25 (Eclipse Temurin) and Maven 3.9.9
 # These are needed to build Maven projects before Docker compose
 # Remove or modify this section if your projects don't use Maven/Java
