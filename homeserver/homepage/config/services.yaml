@@ -75,13 +75,6 @@
         server: local
         container: bookasiero
 
-    - Browser Anna's Archive:
-        icon: mdi-monitor-eye
-        href: http://192.168.3.54:8098
-        description: La sessione di Anna's Archive e Z-Library | serve solo per sbloccarla a mano
-        server: local
-        container: bookasiero-aa
-
 - Smart Home:
     - Home Assistant:
         icon: home-assistant
@@ -112,13 +105,6 @@
         description: "Music Streaming | [Remote](https://hasasierofy.fyi)"
         server: local
         container: hasasierofy-api-1
-
-    - HasasieroGPT:
-        icon: mdi-robot-happy
-        href: http://192.168.3.54:8590
-        description: Local AI Chat & Media Orchestrator
-        server: local
-        container: hasasierogpt
 
     - AudioBruh:
         icon: mdi-book-music
