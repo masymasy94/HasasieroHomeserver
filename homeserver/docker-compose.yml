@@ -8,7 +8,7 @@ services:
   # /dev/dri/renderD129 (Intel iGPU) is kept for VAAPI fallback decode only.
   # renderD128 is the NVIDIA dGPU — used via CUDA/NVENC, NOT via VAAPI.
   jellyfin:
-    image: jellyfin/jellyfin:10.11.11  # pin: aggiorna a mano, non piu' :latest
+    image: jellyfin/jellyfin:12.4  # pin: aggiorna a mano, non piu' :latest
     container_name: jellyfin
     restart: unless-stopped
     runtime: nvidia

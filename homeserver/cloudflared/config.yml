@@ -3,6 +3,11 @@ credentials-file: /etc/cloudflared/223d2293-3ff5-47af-90da-5614a7c6cdd6.json
 origincert: /etc/cloudflared/cert.pem
 
 ingress:
+  # Endpoint HLS legacy (`/hls/`, non `/hls1/`): anonimi anche in Jellyfin 12 e i client
+  # attuali non li usano, quindi da fuori casa 404 (path traversal corretto solo in 12.0).
+  - hostname: hasasiero-jellyfin.fyi
+    path: (?i)/hls/|\.\.
+    service: http_status:404
   - hostname: hasasiero-jellyfin.fyi
     service: http://192.168.3.54:8096
   - hostname: hasasierofy.fyi
