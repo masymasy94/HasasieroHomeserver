@@ -167,7 +167,7 @@ services:
     privileged: true
 
   # === MATTERBRIDGE (2026-10-28) ===
-  # Espone ad Alexa (Matter, porta 5540) solo i 6 switch principali delle prese Tapo, letti
+  # Espone ad Alexa (Matter, porta 5540) solo i 6 switch delle prese Tapo + LED TV (BLE), letti
   # da HA col plugin matterbridge-hass (utente HA non-admin "Matterbridge"). Le prese non
   # hanno internet: Alexa -> Matterbridge -> HA -> presa, tutto in LAN.
   # Frontend solo su 192.168.3.54:8283 (niente Tailscale, niente NPM). --novirtual: niente
