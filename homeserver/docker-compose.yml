@@ -138,6 +138,11 @@ services:
       # DNS
       - "192.168.3.54:53:53/tcp"
       - "192.168.3.54:53:53/udp"
+      # DNS su IPv6 (2026-10-28): il FRITZ usa fd4a:4c0c:c44f::54 come DNSv6 upstream.
+      # [::] e non l'ULA: se al boot l'indirizzo e' ancora in DAD il bind fallirebbe e AGH
+      # non partirebbe (DNS di casa giu' anche su IPv4). Il v6only lo mette docker.
+      - "[::]:53:53/tcp"
+      - "[::]:53:53/udp"
       # Admin panel (setup wizard starts on 3000, mapped to 3053 to avoid conflict with homepage)
       - "3053:3000/tcp"
       # DNS-over-TLS
@@ -160,6 +165,24 @@ services:
       - ./homeassistant/config:/config
       - /run/dbus:/run/dbus:ro
     privileged: true
+
+  # === MATTER SERVER (2026-10-28) ===
+  # Per la presa Tapo P125M (Matter su WiFi, abbinata con codice dall'app Tapo: niente BLE).
+  # matterjs-server e' il successore di python-matter-server (archiviato giu' 2026), stessa
+  # API. Solo su localhost: il websocket non ha autenticazione e comanda i dispositivi.
+  # In HA: integrazione Matter con l'URL di default ws://localhost:5580/ws (v4 e v6)
+  matter-server:
+    image: ghcr.io/matter-js/matterjs-server:stable
+    container_name: matter-server
+    restart: unless-stopped
+    network_mode: host
+    read_only: true
+    environment:
+      - TZ=Europe/Rome
+      - LISTEN_ADDRESS=127.0.0.1,::1
+      - PRIMARY_INTERFACE=enp3s0
+    volumes:
+      - /mnt/hdd/homeserver/matter-server:/data
 
   # === NUT (Nintendo Switch Network Installer) ===
   nut:
