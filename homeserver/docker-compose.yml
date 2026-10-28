@@ -321,7 +321,10 @@ services:
 
   # === FLARESOLVERR (Cloudflare Bypass for Prowlarr, routed through VPN) ===
   flaresolverr:
-    image: ghcr.io/flaresolverr/flaresolverr:latest
+    # upstream + Chromium di Debian aggiornato (vedi flaresolverr/Dockerfile).
+    # Ricostruire: docker build --pull -t flaresolverr-aggiornato homeserver/flaresolverr
+    build: ./flaresolverr
+    image: flaresolverr-aggiornato
     container_name: flaresolverr
     restart: unless-stopped
     network_mode: "service:gluetun"
@@ -340,6 +343,7 @@ services:
     labels:
       - "autoheal=true"
       - "com.centurylinklabs.watchtower.depends-on=gluetun"
+      - "com.centurylinklabs.watchtower.enable=false" # immagine locale, niente da scaricare
 
   # === GLANCES (System & Container Monitor) ===
   glances:
