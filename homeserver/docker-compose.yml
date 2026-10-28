@@ -166,6 +166,28 @@ services:
       - /run/dbus:/run/dbus:ro
     privileged: true
 
+  # === MATTERBRIDGE (2026-10-28) ===
+  # Espone ad Alexa (Matter, porta 5540) solo i 6 switch principali delle prese Tapo, letti
+  # da HA col plugin matterbridge-hass (utente HA non-admin "Matterbridge"). Le prese non
+  # hanno internet: Alexa -> Matterbridge -> HA -> presa, tutto in LAN.
+  # Frontend solo su 192.168.3.54:8283 (niente Tailscale, niente NPM). --novirtual: niente
+  # interruttori virtuali Restart/Update esposti ad Alexa. Il plugin non e' nell'immagine:
+  # matterbridge lo reinstalla da npm all'avvio perche' e' registrato nello storage.
+  matterbridge:
+    image: luligu/matterbridge:latest
+    container_name: matterbridge
+    restart: unless-stopped
+    network_mode: host
+    stop_grace_period: 60s
+    command: ["matterbridge", "--docker", "--bridge", "--novirtual",
+              "--mdnsinterface", "enp3s0", "--bind", "192.168.3.54"]
+    healthcheck:
+      test: ["CMD", "mb_health", "http://192.168.3.54:8283/health"]
+    volumes:
+      - /mnt/hdd/homeserver/matterbridge/Matterbridge:/root/Matterbridge
+      - /mnt/hdd/homeserver/matterbridge/.matterbridge:/root/.matterbridge
+      - /mnt/hdd/homeserver/matterbridge/.mattercert:/root/.mattercert
+
   # === NUT (Nintendo Switch Network Installer) ===
   nut:
     image: shawly/nut:latest
