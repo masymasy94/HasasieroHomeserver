@@ -79,12 +79,22 @@ login:
   method: form
   path: forum/index.php
   form: form#frmLogin
+  # SMF rigenera il session id alla prima visita (anti-fixation): i token del form
+  # non validano mai a sessione fredda ("Session verification failed"). Il server
+  # pero' adotta un PHPSESSID proposto dal client, quindi un cookie statico rende
+  # la sessione "calda" gia' alla GET del form. Verificato 2026-08-21.
+  # Metti 32 caratteri esadecimali A CASO e tienili per te: dopo il login quel
+  # PHPSESSID vale come la tua sessione autenticata. Es. `openssl rand -hex 16`.
+  cookies: ["PHPSESSID=METTI-QUI-32-CARATTERI-ESADECIMALI"]
   inputs:
     user: "{{ .Config.username }}"
     passwrd: "{{ .Config.password }}"
     cookieneverexp: on
   error:
     - selector: p[class="error"]
+    # SMF stampa gli errori veri (Password incorrect, ecc.) in div.errorbox:
+    # senza questo selettore restano mascherati dal generico "selector didn't match".
+    - selector: div.errorbox
   test:
     path: forum/index.php
     selector: a[href*="action=logout"]
