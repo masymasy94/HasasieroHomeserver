@@ -618,6 +618,35 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
 
+  # === SENTINELLA ===
+  # Ogni 5 min controlla container, catena VPN, dischi e Tailscale; ripara da
+  # sola i guasti noti (orfani di gluetun, container staccati dalla rete, slskd
+  # scollegato) e manda la push sul Pixel 6 col webhook di Home Assistant
+  # (automazione in homeassistant/config/automations.yaml). Codice in sentinella/.
+  # Copre il buco di autoheal: un container Exited non e' "unhealthy".
+  # Immagine di secrets-ui (python + docker + compose + sops). Radice montata
+  # sullo stesso path dell'host, altrimenti compose risolve male i bind relativi.
+  sentinella:
+    image: homeserver-secrets-ui:latest
+    container_name: sentinella
+    restart: unless-stopped
+    entrypoint: ["python3", "-u", "/home/masy/Desktop/docker/homeserver/sentinella/sentinella.py"]
+    networks:
+      - home-net
+    environment:
+      - TZ=Europe/Rome
+      - SOPS_AGE_KEY_FILE=/keys/keys.txt
+      - SENTINELLA_WEBHOOK=${SENTINELLA_WEBHOOK}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/masy/.config/sops/age/keys.txt:/keys/keys.txt:ro
+      - /home/masy/Desktop/docker:/home/masy/Desktop/docker
+      - /var/run/tailscale:/var/run/tailscale
+      - /mnt/hdd:/mnt/hdd:ro
+      - /mnt/nas:/mnt/nas:ro,rslave
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false" # immagine locale
+
   # === SAMBA (condivisione dei due dischi USB in rete) ===
   # Dal 2026-09-19 i dischi NON stanno piu' sul FritzBox: il suo driver NTFS
   # corrompeva gli indici delle cartelle dell'Elements (846 danni trovati da

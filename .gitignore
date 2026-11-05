@@ -16,6 +16,10 @@
 !homeserver/docker-compose.yml
 !homeserver/.env.example
 
+# Sentinella (controlli + push)
+!homeserver/sentinella/
+!homeserver/sentinella/*.py
+
 !homeserver/homepage/
 !homeserver/homepage/config/
 !homeserver/homepage/config/*.yaml

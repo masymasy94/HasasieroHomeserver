@@ -15,6 +15,10 @@
 !.env.example
 !README.md
 
+# Sentinella (controlli + push)
+!sentinella/
+!sentinella/*.py
+
 # Homepage dashboard config
 !homepage/
 !homepage/config/
