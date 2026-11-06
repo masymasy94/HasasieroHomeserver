@@ -342,8 +342,9 @@ services:
       start_period: 60s
     labels:
       - "autoheal=true"
+      # niente enable=false: watchtower deve ricrearlo quando aggiorna gluetun, se no resta
+      # orfano. Il pull dell'immagine locale fallisce senza danni (come per audiobruh).
       - "com.centurylinklabs.watchtower.depends-on=gluetun"
-      - "com.centurylinklabs.watchtower.enable=false" # immagine locale, niente da scaricare
 
   # === GLANCES (System & Container Monitor) ===
   glances:
@@ -595,7 +596,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - WATCHTOWER_CLEANUP=true
-      - WATCHTOWER_SCHEDULE=0 4 * * *
+      # 6 campi, il primo sono i secondi: "0 4 * * *" voleva dire ogni ora al minuto 4
+      - WATCHTOWER_SCHEDULE=0 0 4 * * *
       # The bundled docker client defaults to API 1.25; the host daemon
       # (>=29.x) requires >=1.40 and rejects it, crash-looping the container.
       - DOCKER_API_VERSION=1.40
