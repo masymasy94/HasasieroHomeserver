@@ -116,6 +116,47 @@ def ricrea(c):
     return r.returncode == 0
 
 
+# Gira sull'host (nsenter). Uscita: 0 rimontato, 3 disco assente, 4 smontato
+# a mano o rimontaggio gia' fallito dopo questo aggancio, 5 gia' montato, altro =
+# mount fallito. Il criterio: il disco e' arrivato DOPO che il .mount si e' spento.
+RIMONTA = r'''
+u=$(systemd-escape -p --suffix=mount "$1")
+systemctl is-active -q "$u" && exit 5
+dev=$(systemd-escape -p --suffix=device "$(systemctl show -p What --value "$u")")
+systemctl is-active -q "$dev" || exit 3
+arrivato=$(systemctl show --timestamp=unix -p ActiveEnterTimestamp --value "$dev")
+spento=$(systemctl show --timestamp=unix -p InactiveEnterTimestamp --value "$u")
+spento=${spento#@}
+[ "${arrivato#@}" -gt "${spento:-0}" ] || exit 4
+systemctl start "$u"
+'''
+
+
+def rimonta(d):
+    """Un disco USB che si stacca e torna (calo di corrente, 2026-11-08) cambia
+    nome (sdc1 -> sdd1) e il .mount di systemd non si rifa' da solo."""
+    return sh("docker", "run", "--rm", "--privileged", "--pid=host", "alpine",
+              "nsenter", "-t", "1", "-m", "-p", "--", "sh", "-c", RIMONTA, "_", d,
+              timeout=180).returncode
+
+
+def volumi(cs):
+    """{nome volume: cartella dell'host}, per i volumi locali fatti di bind."""
+    nomi = {m["Name"] for c in cs for m in c["Mounts"] if m["Type"] == "volume"}
+    vs = json.loads(sh("docker", "volume", "inspect", *nomi).stdout) if nomi else []
+    return {v["Name"]: (v["Options"] or {}).get("device", "") for v in vs}
+
+
+def dipendenti(cs, d, vol):
+    """Container accesi che vedono d: il loro bind punta ancora al disco vecchio
+    finche' non ripartono. Chi monta un padre di d (sentinella, rslave) no."""
+    def sotto(p):
+        return p == d or p.startswith(d + "/")
+    return [c["Name"][1:] for c in cs if c["State"]["Running"] and any(
+        sotto(m["Source"] if m["Type"] == "bind" else vol.get(m.get("Name"), ""))
+        for m in c["Mounts"])]
+
+
 def staccati(cs):
     """Dopo un reboot un container puo' risultare Up ma fuori dalla sua rete."""
     fuori = ("default", "bridge", "host", "none")
@@ -174,15 +215,20 @@ def _tailscale_status():
     return json.load(c.getresponse())
 
 
+def slskd_loggato():
+    """True/False dal server Soulseek, None se l'API di slskd non risponde."""
+    try:
+        app = json.load(urllib.request.urlopen("http://gluetun:5030/api/v0/application", timeout=15))
+        return app["server"]["isLoggedIn"]
+    except Exception:  # noqa: BLE001 - irraggiungibile = orfano o gluetun giu': altri controlli
+        return None
+
+
 def slskd_scollegato(cs):
     c = next((c for c in cs if c["Name"] == "/" + SLSKD), None)
     if not c or not c["State"]["Running"]:
         return False  # se e' fermo lo dice gia' il controllo dei container
-    try:
-        app = json.load(urllib.request.urlopen("http://gluetun:5030/api/v0/application", timeout=15))
-        return not app["server"]["isLoggedIn"]
-    except Exception:  # noqa: BLE001 - irraggiungibile = orfano o gluetun giu': altri controlli
-        return False
+    return slskd_loggato() is False
 
 
 # --- giro --------------------------------------------------------------------
@@ -202,6 +248,20 @@ def giro(visti, conta, avvisati):
             fatti.append(f"ho riattaccato {n} alla rete {rete}")
         else:
             falliti[f"staccato:{n}"] = f"{n} è staccato da {rete} e non riesco a riattaccarlo"
+    for d in NAS:
+        if os.path.ismount(d):
+            continue
+        esito = rimonta(d)
+        if esito == 0:
+            legati = dipendenti(cs, d, volumi(cs))
+            ko = [n for n in legati if sh("docker", "restart", n, timeout=180).returncode]
+            fatti.append(f"{d} si era staccato: l'ho rimontato e ho riavviato {', '.join(legati)}"
+                         + (f" (non ripartono: {', '.join(ko)})" if ko else ""))
+        elif esito not in (3, 4, 5):
+            # avvisa subito e una volta: al giro dopo lo script non riprova (esce 4)
+            k = f"disco:{d}"
+            conta[k], avvisati[k] = 2, f"{d} è tornato ma non riesco a rimontarlo (journalctl -u del suo .mount)"
+            fatti.append(avvisati[k])
     if fatti:
         cs = containers()
 
@@ -209,8 +269,18 @@ def giro(visti, conta, avvisati):
     if slskd_scollegato(cs):
         problemi["slskd"] = "slskd è scollegato da Soulseek"
         if conta.get("slskd", 0) + 1 == 2:  # stesso giro in cui parte l'avviso
-            ok = sh("docker", "restart", SLSKD).returncode == 0
-            problemi["slskd"] += ": l'ho riavviato" if ok else " e non riesco a riavviarlo"
+            # slskd 0.26 perde il server senza accorgersene piu' volte al giorno e il
+            # riavvio basta sempre: si avvisa solo se non si ricollega (rientra in ~5 s).
+            # ponytail: se torna a cadere a ogni giro non avvisa mai; il log lo dice.
+            if sh("docker", "restart", SLSKD).returncode:
+                problemi["slskd"] += " e non riesco a riavviarlo"
+            else:
+                time.sleep(30)
+                if slskd_loggato():
+                    print(time.strftime("%F %T"), "slskd scollegato da Soulseek: riavviato", flush=True)
+                    del problemi["slskd"]
+                else:
+                    problemi["slskd"] += ": riavviato ma non si ricollega"
 
     nuovi, risolti = aggiorna(conta, avvisati, problemi)
     righe = fatti + nuovi + [f"risolto: {m}" for m in risolti]

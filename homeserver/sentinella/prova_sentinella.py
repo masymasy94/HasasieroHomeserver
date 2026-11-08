@@ -1,5 +1,5 @@
 """Prova della logica pura della sentinella: python3 prova_sentinella.py"""
-from sentinella import aggiorna, orfani, problemi_container
+from sentinella import aggiorna, dipendenti, orfani, problemi_container
 
 GLUETUN_ID = "g2"
 
@@ -44,5 +44,72 @@ assert aggiorna(conta, avvisati, {"x": "x rotto"}) == ([], [])
 assert aggiorna(conta, avvisati, {}) == ([], ["x rotto"])
 assert aggiorna(conta, avvisati, {"y": "blip"}) == ([], [])
 assert aggiorna(conta, avvisati, {}) == ([], [])  # sparito al primo giro: silenzio
+
+# giro con slskd scollegato: se il riavvio lo ricollega niente push, altrimenti si'
+import subprocess
+import sentinella as s
+spinte, riavvii, loggato = [], [], []
+s.containers = lambda: [c("hasasierofy-slskd-1", net="bridge")]
+s.problemi_server = lambda: {}
+s.push = spinte.append
+s.time.sleep = lambda _: None
+s.sh = lambda *cmd, **kw: riavvii.append(cmd) or subprocess.CompletedProcess(cmd, 0)
+s.slskd_loggato = lambda: loggato.pop(0)
+stato = (set(), {}, {})
+loggato += [False, False, True, True]  # giro 1, giro 2 + dopo il riavvio, giro 3
+for _ in range(3):
+    s.giro(*stato)
+assert spinte == [] and len(riavvii) == 1, (spinte, riavvii)
+loggato += [False, False, False, True]  # stavolta il riavvio non basta
+for _ in range(3):
+    s.giro(*stato)
+assert spinte == ["slskd è scollegato da Soulseek: riavviato ma non si ricollega",
+                  "risolto: slskd è scollegato da Soulseek: riavviato ma non si ricollega"], spinte
+
+# dipendenti: chi vede il disco con un bind sotto di lui o un volume che ci punta
+E = "/mnt/nas/Elements"
+
+
+def m(nome, *mounts, running=True):
+    x = c(nome, running=running, net="bridge")
+    x["Mounts"] = [{"Type": t, "Source": src, "Name": n} for t, src, n in mounts]
+    return x
+
+
+cs = [m("plex", ("bind", E + "/Film", None), ("bind", "/mnt/nas/Seagate_Backup_Plus_Drive/Anime", None)),
+      m("samba", ("bind", E, None)),
+      m("minio", ("volume", "/var/lib/docker/volumes/minio_data/_data", "minio_data")),
+      m("sentinella", ("bind", "/mnt/nas", None)),  # rslave: vede il rimontaggio da sola
+      m("elementsfake", ("bind", E + "-bis", None)),
+      m("spento", ("bind", E, None), running=False),
+      m("redis", ("volume", "/var/lib/docker/volumes/redis/_data", "redis"))]
+vol = {"minio_data": E + "/hasasierofy/minio_data", "redis": ""}
+assert dipendenti(cs, E, vol) == ["plex", "samba", "minio"], dipendenti(cs, E, vol)
+
+# giro col disco tornato: rimonta, riavvia chi lo usa, una push sola
+spinte.clear()
+riavvii.clear()
+s.containers = lambda: cs
+s.volumi = lambda cs: vol
+s.os.path.ismount = lambda d: d != E
+s.rimonta = lambda d: 0
+s.giro(set(), {}, {})
+assert [x[-1] for x in riavvii] == ["plex", "samba", "minio"], riavvii
+assert spinte == [E + " si era staccato: l'ho rimontato e ho riavviato plex, samba, minio"], spinte
+
+# rimontaggio fallito: una push subito (non al 2o giro), poi solo il "risolto".
+# Al 2o giro lo script dell'host non riprova (4): il .mount e' fallito dopo il riaggancio.
+spinte.clear()
+esiti = [1, 4]
+s.rimonta = lambda d: esiti.pop(0)
+s.problemi_server = lambda: {"disco:" + E: E + " non è montato"}
+stato = (set(), {}, {})
+s.giro(*stato)
+s.giro(*stato)
+s.problemi_server = lambda: {}
+s.os.path.ismount = lambda d: True
+s.giro(*stato)
+assert spinte == [E + " è tornato ma non riesco a rimontarlo (journalctl -u del suo .mount)",
+                  "risolto: " + E + " è tornato ma non riesco a rimontarlo (journalctl -u del suo .mount)"], spinte
 
 print("ok")
