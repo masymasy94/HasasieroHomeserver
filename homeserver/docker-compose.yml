@@ -442,14 +442,13 @@ services:
       # rimettere `locale` qui (o usare il toggle in Impostazioni).
       - LLM_PROVIDER=openrouter
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      # Worker locale (Strata sul PC .108, spesso spento; dal 2026-10-11 al posto di
-      # Ollama) — FALLBACK. LLM_LOCALE_URL e' l'ORIGINE: il codice aggiunge
-      # /v1/chat/completions da se'. Senza, 'locale' punta a localhost DENTRO il
-      # container. Carico ~80 s: scalda.mjs usa /v1/load e riprova ogni 5 min se il
-      # .108 e' spento. Contesto 32K (n_ctx di Strata), i prompt stanno sotto i 2K.
+      # Worker locale: il portinaio GPU del .108 (dal 2026-11-09, ramo `portinaio` di solo-dm)
+      # davanti a llama-swap. LLM_LOCALE_URL e' l'ORIGINE: il codice aggiunge
+      # /v1/chat/completions da se', la salute e' GET /gpu. Il toggle in Impostazioni
+      # (campagne/impostazioni.json) vince su LLM_PROVIDER: oggi dice `locale`.
       - LLM_LOCALE_URL=http://192.168.3.108:11434
-      # LLM_MODELLO e' il modello del worker LOCALE (conta con LLM_PROVIDER=locale).
-      # Strata serve un modello solo e ignora il nome; con openrouter e' INERTE.
+      # LLM_MODELLO e' il modello del worker LOCALE: llama-swap sceglie il modello DAL NOME,
+      # quindi deve essere esatto (un refuso = salute «scaldando» per sempre).
       - LLM_MODELLO=qwen3.8-flash-next-iq2_xs
       # Opzionale: senza, FLUX genera da anonimo (code e 429 piu' frequenti).
       - HF_TOKEN=${HF_TOKEN}
@@ -465,10 +464,9 @@ services:
       # confonderla con le altre. Inerte finche' LLM_PROVIDER resta openrouter:
       # per passare a Groq basta cambiare quella riga, senza toccare il codice.
       - API_KEY=${GROQ_API_KEY}
-      # Worker mappe .108 (Fase 2, docs/worker-mappe-108.md di solo-dm): fondi
-      # img2img dei dungeon. Non un segreto (LAN, come LLM_LOCALE_URL); .108 spento
-      # -> generaFondo no-op, ritenta al refill immagini. Porta 8600 sul .108.
-      - MAPPE_WORKER_URL=http://192.168.3.108:8600
+      # Immagini (/illustra, /genera) dal portinaio del .108, stesso indirizzo delle chat: il
+      # worker :8600 dal 2026-11-06 ascolta solo su 127.0.0.1. Non un segreto (LAN).
+      - MAPPE_WORKER_URL=http://192.168.3.108:11434
     volumes:
       - solo-dm-campagne:/app/campagne
       - solo-dm-personaggi:/app/personaggi
