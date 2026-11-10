@@ -192,16 +192,18 @@ services:
   # hanno internet: Alexa -> Matterbridge -> HA -> presa, tutto in LAN.
   # Frontend solo su 192.168.3.54:8283 (niente Tailscale, niente NPM). --novirtual: niente
   # interruttori virtuali Restart/Update esposti ad Alexa. Il plugin non e' nell'immagine:
-  # matterbridge lo reinstalla da npm all'avvio perche' e' registrato nello storage.
+  # se manca, matterbridge lo reinstalla da npm all'avvio SENZA versione (l'ultima uscita).
+  # Per questo il command lo installa prima a versione fissa: matterbridge lo trova e non
+  # tocca npm. Immagine e plugin fissi al 10/11 (ultime stabili: 3.11.2 = latest di quel
+  # giorno, matterbridge-hass 1.6.1); per aggiornare cambia i due numeri qui.
   matterbridge:
-    image: luligu/matterbridge:latest
+    image: luligu/matterbridge:3.11.2
     container_name: matterbridge
     restart: unless-stopped
     logging: *logging
     network_mode: host
     stop_grace_period: 60s
-    command: ["matterbridge", "--docker", "--bridge", "--novirtual",
-              "--mdnsinterface", "enp3s0", "--bind", "192.168.3.54"]
+    command: ["sh", "-c", "npm ls -g matterbridge-hass@1.6.1 >/dev/null 2>&1 || npm install -g --no-fund --no-audit --omit=dev matterbridge-hass@1.6.1 && exec matterbridge --docker --bridge --novirtual --mdnsinterface enp3s0 --bind 192.168.3.54"]
     healthcheck:
       test: ["CMD", "mb_health", "http://192.168.3.54:8283/health"]
     volumes:

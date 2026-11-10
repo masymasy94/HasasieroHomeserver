@@ -135,7 +135,9 @@ systemctl start "$u"
 def rimonta(d):
     """Un disco USB che si stacca e torna (calo di corrente, 2026-11-08) cambia
     nome (sdc1 -> sdd1) e il .mount di systemd non si rifa' da solo."""
-    return sh("docker", "run", "--rm", "--privileged", "--pid=host", "alpine",
+    # tag fisso (ultima stabile al 10/11): con "alpine" nudo un container privilegiato
+    # con --pid=host girava l'immagine che il registry dava quel giorno
+    return sh("docker", "run", "--rm", "--privileged", "--pid=host", "alpine:3.24.4",
               "nsenter", "-t", "1", "-m", "-p", "--", "sh", "-c", RIMONTA, "_", d,
               timeout=180).returncode
 
