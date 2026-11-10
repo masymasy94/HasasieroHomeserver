@@ -42,14 +42,21 @@ fetch_repos() {
   local all=""
   while true; do
     local batch
+    # Solo repo PRIVATI: su un repo pubblico una PR da fork farebbe girare
+    # codice di chiunque qui, col socket docker e la rete host (= root).
+    # `type` non si combina con visibility/affiliation (422), da qui affiliation.
+    # Il select su .private e' lo scarto esplicito, se il filtro API cambiasse.
     batch=$(curl -sf -H "Authorization: Bearer ${ACCESS_TOKEN}" \
-      "https://api.github.com/user/repos?per_page=100&page=${page}&type=owner" \
-      | jq -r '.[].full_name' 2>/dev/null) || break
+      "https://api.github.com/user/repos?per_page=100&page=${page}&visibility=private&affiliation=owner" \
+      | jq -r '.[] | select(.private == true) | .full_name' 2>/dev/null) || break
     [[ -z "$batch" ]] && break
     all+="${batch}"$'\n'
     (( $(echo "$batch" | wc -l) < 100 )) && break
     ((page++))
   done
+  # Eccezioni esplicite (owner/repo separati da spazi), vuote di default: un repo
+  # pubblico qui dentro torna esposto alle PR da fork, metterlo solo a ragion veduta.
+  all+="$(tr ' ' '\n' <<< "${RUNNER_PUBLIC_REPOS:-}")"$'\n'
   echo "$all" | sort -u | sed '/^$/d'
 }
 

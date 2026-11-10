@@ -497,6 +497,9 @@ services:
       - RUNNER_NAME_PREFIX=homeserver
       - LABELS=self-hosted,Linux,X64,homeserver
       - POLL_INTERVAL=300
+      # Il runner si registra solo sui repo PRIVATI. Eccezioni (owner/repo separati
+      # da spazi): un repo pubblico qui torna eseguibile da una PR da fork. Vuota.
+      - RUNNER_PUBLIC_REPOS=
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
