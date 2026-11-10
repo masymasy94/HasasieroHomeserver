@@ -30,6 +30,8 @@ jobs:
       - name: Deploy or update
         id: deploy
         run: |
+          # Senza pipefail lo stato del passo e' quello di tee: un deploy fallito risultava verde.
+          set -o pipefail
           echo "::group::Deploy output"
           ${APPS_ROOT}/scripts/ci-deploy.sh "$REPO_URL" "$APP_NAME" 2>&1 | tee /tmp/deploy-${APP_NAME}.log
           echo "::endgroup::"
