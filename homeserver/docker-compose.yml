@@ -542,7 +542,7 @@ services:
   # già di per sé un confine di autenticazione, mai 0.0.0.0.
   # Dal 10/11 niente più deroga SECRETS_UI_NO_AUTH: serve SECRETS_UI_PASSWORD
   # (dal vault: `sops exec-env env.sops.yaml 'docker compose up -d secrets-ui'`).
-  # Senza, compose si rifiuta di partire invece di aprire la UI senza password.
+  # Senza la variabile nell'ambiente la UI legge la password dal vault o esce: non resta mai aperta.
   # Rete propria, non home-net: gli altri container non arrivano alla 8787.
   # Il container monta la chiave age privata: tenerlo spento quando non serve
   # (`docker compose stop secrets-ui`) riduce la finestra di esposizione.
@@ -574,7 +574,10 @@ services:
       - TZ=Europe/Rome
       # 0.0.0.0 dentro il container serve alla porta pubblicata; da fuori decide il bind.
       - SECRETS_HOST=0.0.0.0
-      - "SECRETS_UI_PASSWORD=${SECRETS_UI_PASSWORD:?manca (vault sops), secrets-ui non parte senza password}"
+      # Passata solo se c'è nell'ambiente (sops exec-env), senza interpolazione: con ${VAR:?} OGNI
+      # `docker compose -f` su questo file falliva senza il vault, anche `pull solo-dm` dei deploy
+      # delle app. Senza la variabile la UI legge la password dal vault o esce: mai aperta.
+      - SECRETS_UI_PASSWORD
       - SECRETS_ROOT=/home/masy/Desktop/docker
       - SOPS_AGE_KEY_FILE=/keys/keys.txt
       # Servizi da ricreare dopo un salvataggio, spazio-separati. Solo quelli che
