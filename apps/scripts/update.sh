@@ -35,19 +35,15 @@ fi
 git config --global --add safe.directory "$APP_DIR" 2>/dev/null || true
 if [[ -d "${APP_DIR}/.git" ]] && git -C "$APP_DIR" remote get-url origin &>/dev/null; then
     info "Pulling latest changes (branch: ${GIT_BRANCH})..."
-    # For private repos: temporarily set token-authenticated URL for fetch
-    if [[ -n "${ACCESS_TOKEN:-}" ]]; then
-        ORIGIN_URL=$(git -C "$APP_DIR" remote get-url origin)
-        if [[ "$ORIGIN_URL" == https://github.com/* ]]; then
-            git -C "$APP_DIR" remote set-url origin "${ORIGIN_URL/https:\/\/github.com/https://${ACCESS_TOKEN}@github.com}"
-        fi
+    # The old scheme put the token in the URL and left it there when the fetch failed:
+    # drop it. Private repos now authenticate through GIT_AUTH (lib/common.sh).
+    ORIGIN_URL=$(git -C "$APP_DIR" remote get-url origin)
+    if [[ "$ORIGIN_URL" =~ ^https://[^/@]+@github\.com/ ]]; then
+        git -C "$APP_DIR" remote set-url origin "https://github.com/${ORIGIN_URL#*@github.com/}"
+        warn "Removed the token saved in the origin URL"
     fi
-    git -C "$APP_DIR" fetch origin "$GIT_BRANCH":"refs/remotes/origin/${GIT_BRANCH}" 2>&1 | while read -r line; do echo "  $line"; done
+    git "${GIT_AUTH[@]}" -C "$APP_DIR" fetch origin "$GIT_BRANCH":"refs/remotes/origin/${GIT_BRANCH}" 2>&1 | while read -r line; do echo "  $line"; done
     git -C "$APP_DIR" reset --hard "origin/${GIT_BRANCH}" 2>&1 | while read -r line; do echo "  $line"; done
-    # Restore clean URL (without token)
-    if [[ -n "${ACCESS_TOKEN:-}" ]] && [[ -n "${ORIGIN_URL:-}" ]]; then
-        git -C "$APP_DIR" remote set-url origin "$ORIGIN_URL"
-    fi
 elif [[ -d "${APP_DIR}/.git" ]]; then
     warn "Local repo with no remote — skipping pull"
 else

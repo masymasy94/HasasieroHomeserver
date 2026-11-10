@@ -17,6 +17,19 @@ if [[ -z "${ACCESS_TOKEN:-}" ]]; then
     export ACCESS_TOKEN
 fi
 
+# ─── Git auth for private repos: git "${GIT_AUTH[@]}" clone|fetch ... ───
+# The token reaches git through a credential helper that reads it from the
+# environment, never through the URL: in the URL it was visible in `ps` and
+# stayed in .git/config when a fetch failed. Only for https://github.com; the
+# empty value first drops any other helper configured for that host.
+# shellcheck disable=SC2034 # used by the scripts that source this file
+GIT_AUTH=()
+if [[ -n "${ACCESS_TOKEN:-}" ]]; then
+    # shellcheck disable=SC2016,SC2034 # $ACCESS_TOKEN is expanded by the helper's shell, not here
+    GIT_AUTH=(-c 'credential.https://github.com.helper=' \
+              -c 'credential.https://github.com.helper=!f() { echo username=x-access-token; echo "password=$ACCESS_TOKEN"; }; f')
+fi
+
 # ─── Colors ───
 RED='\033[0;31m'
 GREEN='\033[0;32m'

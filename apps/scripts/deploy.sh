@@ -63,17 +63,9 @@ if [[ -d "$REPO" ]]; then
         git -C "$APP_DIR" commit -q -m "Initial import from local path"
     fi
 else
-    CLONE_URL="$REPO"
-    # For private repos: inject ACCESS_TOKEN into HTTPS URL if available
-    if [[ -n "${ACCESS_TOKEN:-}" ]] && [[ "$CLONE_URL" == https://github.com/* ]]; then
-        CLONE_URL="${CLONE_URL/https:\/\/github.com/https://${ACCESS_TOKEN}@github.com}"
-    fi
+    # Private repos: the token goes through GIT_AUTH (lib/common.sh), never in the URL
     info "Cloning: ${REPO} (branch: ${GIT_BRANCH})"
-    git clone --depth=1 --branch "$GIT_BRANCH" "$CLONE_URL" "$APP_DIR"
-    # Store clean URL (without token) as remote
-    if [[ "$CLONE_URL" != "$REPO" ]]; then
-        git -C "$APP_DIR" remote set-url origin "$REPO"
-    fi
+    git "${GIT_AUTH[@]}" clone --depth=1 --branch "$GIT_BRANCH" "$REPO" "$APP_DIR"
 fi
 
 # Ensure files are accessible (runner may clone as root)
