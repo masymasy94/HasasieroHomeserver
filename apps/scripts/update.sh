@@ -203,10 +203,28 @@ else
 fi
 
 # ─── Clean deploy: wipe volumes if requested (e.g. Flyway migration changes) ───
+# The workflow's CLEAN_DEPLOY alone is not enough: GitHub's contains() ignores case,
+# so "RELEASE cleanup" used to wipe the DB. The commit must also carry the exact
+# word --clear, and every volume is saved before `down -v`.
+# Restore: docker run --rm -v <vol>:/v -v <dir>:/b alpine:3.20 tar xzf /b/<vol>.tar.gz -C /v
 if [[ "${CLEAN_DEPLOY:-false}" == "true" ]]; then
-    warn "CLEAN_DEPLOY requested — wiping all volumes (fresh database, fresh state)"
-    docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" down -v --remove-orphans 2>&1 | while read -r line; do echo "  $line"; done
-    success "Volumes wiped — Flyway will run all migrations from scratch"
+    if git -C "$APP_DIR" log -1 --format=%B 2>/dev/null | grep -qE '(^|[[:space:]])--clear([[:space:]]|$)'; then
+        warn "CLEAN_DEPLOY requested — wiping all volumes (fresh database, fresh state)"
+        BACKUP_DIR="${APPS_ROOT}/backups/${APP_NAME}/$(date +%Y%m%d-%H%M%S)"
+        mkdir -p "$BACKUP_DIR"
+        docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" stop 2>&1 | while read -r line; do echo "  $line"; done
+        for vol in $(docker volume ls -q --filter "label=com.docker.compose.project=${APP_NAME}"); do
+            if ! docker run --rm -v "${vol}:/v:ro" -v "${BACKUP_DIR}:/b" alpine:3.20 tar czf "/b/${vol}.tar.gz" -C /v .; then
+                docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" start 2>&1 | while read -r line; do echo "  $line"; done
+                fatal "Backup of volume ${vol} failed — volumes NOT wiped, containers restarted."
+            fi
+        done
+        success "Volumes saved in ${BACKUP_DIR}"
+        docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" down -v --remove-orphans 2>&1 | while read -r line; do echo "  $line"; done
+        success "Volumes wiped — Flyway will run all migrations from scratch"
+    else
+        warn "CLEAN_DEPLOY ignored: the commit message lacks the exact word --clear — volumes kept"
+    fi
 fi
 
 # Apps that gate services behind a compose profile (e.g. hasasierofy's

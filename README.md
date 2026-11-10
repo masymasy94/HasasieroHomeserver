@@ -183,7 +183,7 @@ IP aliases are assigned from `IP_ALIAS_BASE` in `settings.conf` (default: `192.1
 
 ### CI/CD
 
-Apps deploy automatically via GitHub Actions. Include `RELEASE` in a commit message to trigger a deploy. Add `CLEAN` to also wipe volumes (useful for database migration resets).
+Apps deploy automatically via GitHub Actions. Include `RELEASE` in a commit message to trigger a deploy. To also wipe volumes (useful for database migration resets) the workflow must set `CLEAN_DEPLOY=true` **and** the commit message must contain the exact word `--clear` (case-sensitive, on its own). `update.sh` first saves every volume to `apps/backups/<app>/<timestamp>/<volume>.tar.gz`, then runs `down -v`.
 
 The self-hosted runner (in `homeserver/github-runner/`) picks up jobs and calls `ci-deploy.sh`, which:
 - Runs `deploy.sh` if the app doesn't exist yet (first deploy)
