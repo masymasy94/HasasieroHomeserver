@@ -110,7 +110,7 @@ services:
     networks:
       - home-net
     ports:
-      - "3001:3001"
+      - "192.168.3.54:3001:3001"
     volumes:
       - ./uptime-kuma/data:/app/data
 
@@ -146,9 +146,9 @@ services:
       - "[::]:53:53/tcp"
       - "[::]:53:53/udp"
       # Admin panel (setup wizard starts on 3000, mapped to 3053 to avoid conflict with homepage)
-      - "3053:3000/tcp"
-      # DNS-over-TLS
-      - "853:853/tcp"
+      - "192.168.3.54:3053:3000/tcp"
+      # DNS-over-TLS: solo LAN v4 come il pannello (nessun client noto via tailnet/IPv6)
+      - "192.168.3.54:853:853/tcp"
     volumes:
       - ./adguardhome/work:/opt/adguardhome/work
       - ./adguardhome/conf:/opt/adguardhome/conf
@@ -218,16 +218,16 @@ services:
       - home-net
     ports:
       # Prowlarr (routed through VPN)
-      - "9696:9696"
+      - "192.168.3.54:9696:9696"
       # FlareSolverr (routed through VPN)
-      - "8191:8191"
+      - "192.168.3.54:8191:8191"
       # qBittorrent WebUI (routed through VPN)
-      - "8099:8085"
-      # qBittorrent torrent port (routed through VPN)
+      - "192.168.3.54:8099:8085"
+      # qBittorrent torrent port: resta su tutte le interfacce (porta peer, non un pannello)
       - "6881:6881"
       - "6881:6881/udp"
       # AudioBruh (stack a parte, gira nella netns di gluetun dal 2026-07-30)
-      - "8680:8080"
+      - "192.168.3.54:8680:8080"
     environment:
       - TZ=Europe/Rome
       - VPN_SERVICE_PROVIDER=nordvpn
@@ -481,7 +481,10 @@ services:
     networks:
       - home-net
     ports:
-      - "5000:5000"
+      # 127.0.0.1 tiene vivo localhost:5000, l'unico indirizzo che docker accetta senza
+      # insecure-registries; la LAN come gli altri. Niente auth: mai su tutte le interfacce.
+      - "127.0.0.1:5000:5000"
+      - "192.168.3.54:5000:5000"
     volumes:
       - registry-data:/var/lib/registry
 
