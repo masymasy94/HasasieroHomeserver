@@ -1,0 +1,14 @@
+# Backup restic dei dati non ricreabili (backup.sh qui accanto). NON attivo.
+# Per accenderlo, da root, dopo i passi 1-3 in testa a backup.sh:
+#   cp homeserver-backup.service homeserver-backup.timer /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now homeserver-backup.timer
+# Alternativa cron (root): 30 3 * * * set -a; . /etc/restic-homeserver.env; set +a; /home/masy/Desktop/docker/homeserver/backup/backup.sh
+[Unit]
+Description=Backup restic dell'homeserver
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/restic-homeserver.env
+ExecStart=/home/masy/Desktop/docker/homeserver/backup/backup.sh

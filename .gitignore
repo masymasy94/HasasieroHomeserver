@@ -20,6 +20,11 @@
 !homeserver/sentinella/
 !homeserver/sentinella/*.py
 
+# Backup restic (non attivo)
+!homeserver/backup/
+!homeserver/backup/backup.sh
+!homeserver/backup/homeserver-backup.*
+
 !homeserver/homepage/
 !homeserver/homepage/config/
 !homeserver/homepage/config/*.yaml

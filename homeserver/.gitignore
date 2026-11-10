@@ -19,6 +19,11 @@
 !sentinella/
 !sentinella/*.py
 
+# Backup restic (non attivo)
+!backup/
+!backup/backup.sh
+!backup/homeserver-backup.*
+
 # Homepage dashboard config
 !homepage/
 !homepage/config/

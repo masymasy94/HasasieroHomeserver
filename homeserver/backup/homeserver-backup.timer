@@ -1,0 +1,10 @@
+# 03:30: prima di watchtower (04:00), che ricrea i container aggiornati.
+[Unit]
+Description=Backup restic dell'homeserver, ogni notte
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
