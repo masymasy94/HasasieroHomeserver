@@ -312,11 +312,8 @@ async function scrapeMagnet(pageUrl) {
 }
 
 async function scrapeMagnetFlare(pageUrl) {
-  const res = await fetch('/proxy/flare/', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ cmd: 'request.get', url: pageUrl, maxTimeout: 60000 }),
-  });
+  // Solo l'url dopo il ?: il JSON per FlareSolverr lo scrive nginx, che controlla l'host
+  const res = await fetch('/proxy/flare/?' + pageUrl);
   if (!res.ok) throw new Error('FlareSolverr failed');
   const data = await res.json();
   if (data.status !== 'ok') throw new Error('FlareSolverr error');
