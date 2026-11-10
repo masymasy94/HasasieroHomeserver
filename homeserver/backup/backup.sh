@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Backup con restic dei dati che non si ricreano: volumi docker (campagne e
-# personaggi di solo-dm, animehub, plex), config di Home Assistant, certificati
+# personaggi di solo-dm, animehub), config di Home Assistant, certificati
 # di NPM, il vault sops e la chiave age che lo apre.
 #
 # NON ATTIVO: la destinazione la sceglie chi lo accende. Prima volta, da root:
@@ -29,7 +29,8 @@ DOCKER_ROOT="${DOCKER_ROOT:-/home/masy/Desktop/docker}"
 COMPOSE_PROJECT="${COMPOSE_PROJECT:-homeserver}"
 TAG="${BACKUP_TAG:-homeserver}"
 AGE_KEY="/home/masy/.config/sops/age/keys.txt"
-VOLUMES=(solo-dm-campagne solo-dm-personaggi animehub-data plex-config)
+# Niente plex-config (5 GB): Plex non serve, c'e' Jellyfin (scelta dell'utente, 10/11).
+VOLUMES=(solo-dm-campagne solo-dm-personaggi animehub-data)
 BIND_PATHS=(
   "${DOCKER_ROOT}/homeserver/homeassistant/config"
   "${DOCKER_ROOT}/homeserver/nginx-proxy-manager/letsencrypt"
@@ -37,7 +38,7 @@ BIND_PATHS=(
   "$AGE_KEY"
 )
 # Container fermati durante il backup (scrivono nei volumi qui sopra).
-read -r -a STOP_CONTAINERS <<< "${BACKUP_STOP:-solo-dm animehub plex homeassistant}"
+read -r -a STOP_CONTAINERS <<< "${BACKUP_STOP:-solo-dm animehub homeassistant}"
 
 log() { echo "[backup] $(date '+%F %T') $*"; }
 
