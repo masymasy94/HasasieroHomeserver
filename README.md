@@ -14,17 +14,15 @@ Docker-based homeserver running 20+ self-hosted services and a multi-app deploym
 │   ├── docker-compose.yml
 │   ├── homepage/config/
 │   ├── prowlarr-search/
-│   ├── telegram-ollama-bot/
 │   ├── github-runner/
 │   └── ...
 │
 └── apps/                # Multi-app deployment platform
     ├── scripts/         # deploy, update, start, stop, remove, status, logs
-    ├── infrastructure/  # GitHub runner, network setup
+    ├── infrastructure/  # network setup (setup-network.sh), .env with ACCESS_TOKEN
     ├── templates/       # Example compose & workflow files
     ├── config/          # App registry & settings
-    ├── deployments/     # Cloned app repos (gitignored)
-    └── homepage/config/
+    └── deployments/     # Cloned app repos (gitignored)
 ```
 
 ---
@@ -42,9 +40,6 @@ A single `docker-compose.yml` running all core services.
 | | Prowlarr Search | `8888` | Custom torrent search UI |
 | | Jackett | `9117` | Torrent indexer proxy |
 | | qBittorrent | `8099` | Torrent client (VPN-routed) |
-| **AI** | Ollama | `11434` | LLM inference (NVIDIA GPU) |
-| | Open WebUI | `8080` | Chat interface for Ollama |
-| | Telegram Bot | — | Telegram interface for Ollama |
 | **Smart Home** | Home Assistant | `8123` | Home automation |
 | **DNS** | AdGuard Home | `53` `853` `3053` | Network-wide DNS + ad blocker |
 | **VPN** | Gluetun | `9696` `8191` `8099` `6881` | NordVPN WireGuard gateway |
@@ -73,7 +68,6 @@ HOST (192.168.3.54)
 │   ├── Portainer, Homepage, Uptime Kuma, Glances
 │   ├── Nginx Proxy Manager (80, 443, 81)
 │   ├── AdGuard Home (53, 853, 3053)
-│   ├── Ollama → Open WebUI, Telegram Bot
 │   ├── Jackett, Prowlarr Search, NUT, Registry
 │   │
 │   └── Gluetun VPN (NordVPN WireGuard)
@@ -88,9 +82,8 @@ HOST (192.168.3.54)
 
 ```bash
 cd homeserver/
-cp .env.example .env   # Fill in secrets (VPN key, Telegram token, GitHub PAT)
-docker compose up -d
-docker compose --profile runner up -d   # Optional: GitHub runner
+cp .env.example .env   # Fill in secrets (VPN key, GitHub PAT)
+docker compose up -d   # the GitHub runner starts with the stack
 ```
 
 Open the dashboard at `http://192.168.3.54:3000`
@@ -205,7 +198,7 @@ The workflow template is at `apps/templates/github-workflow.yml`.
 ## Prerequisites
 
 - Docker Engine + Docker Compose v2
-- NVIDIA GPU + [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) (for Ollama)
+- NVIDIA GPU + [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) (Jellyfin NVENC transcoding)
 - NAS/external storage mounted for media volumes (Plex)
 
 ## Secrets

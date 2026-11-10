@@ -47,29 +47,15 @@
 !jackett/config/cardigann/definitions/
 !jackett/config/cardigann/definitions/*.yml
 
-# Ollama Modelfiles
-!ollama/
-!ollama/modelfiles/
-!ollama/modelfiles/Modelfile.*
-
 # GitHub Actions Runner
 !github-runner/
 !github-runner/Dockerfile
 !github-runner/multi-runner-entrypoint.sh
-!github-runner/entrypoint-wrapper.sh
 
 # Cloudflare Tunnel (config only — credentials *.json / cert *.pem stay ignored)
 !cloudflared/
 !cloudflared/config.yml
 !cloudflared/README.md
-
-# Docker Agent (LLM Container Monitor)
-!docker-agent/
-!docker-agent/Dockerfile
-!docker-agent/requirements.txt
-!docker-agent/app.py
-!docker-agent/templates/
-!docker-agent/templates/index.html
 
 # ========================================
 # Explicitly exclude secrets & heavy data

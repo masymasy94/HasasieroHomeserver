@@ -95,5 +95,4 @@ create_dirs
 echo ""
 success "Setup complete!"
 info "Next steps:"
-echo "  1. Start infrastructure: docker compose -f ${APPS_ROOT}/infrastructure/docker-compose.yml up -d registry"
-echo "  2. Deploy an app:        ${APPS_ROOT}/scripts/deploy.sh <repo-url> <app-name>"
+echo "  Deploy an app: ${APPS_ROOT}/scripts/deploy.sh <repo-url> <app-name>"

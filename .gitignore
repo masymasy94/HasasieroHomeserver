@@ -48,7 +48,6 @@
 !homeserver/github-runner/
 !homeserver/github-runner/Dockerfile
 !homeserver/github-runner/multi-runner-entrypoint.sh
-!homeserver/github-runner/entrypoint-wrapper.sh
 
 !homeserver/qbittorrent/
 !homeserver/qbittorrent/config/
@@ -69,36 +68,14 @@
 !apps/templates/
 !apps/templates/*
 
-# Infrastructure (runner, network setup)
+# Infrastructure (network setup; .env con ACCESS_TOKEN resta fuori da git)
 !apps/infrastructure/
-!apps/infrastructure/docker-compose.yml
-!apps/infrastructure/runner.Dockerfile
-!apps/infrastructure/multi-runner-entrypoint.sh
-!apps/infrastructure/entrypoint-wrapper.sh
 !apps/infrastructure/setup-network.sh
 
 # Config (no secrets)
 !apps/config/
 !apps/config/apps.conf
 !apps/config/settings.conf.example
-
-# Homepage dashboard config
-!apps/homepage/
-!apps/homepage/config/
-!apps/homepage/config/*.yaml
-!apps/homepage/config/custom.css
-!apps/homepage/config/custom.js
-
-# Prowlarr Search
-!apps/prowlarr-search/
-!apps/prowlarr-search/index.html
-!apps/prowlarr-search/nginx.conf
-!apps/prowlarr-search/tntvillage.json
-
-# NUT config
-!apps/nut/
-!apps/nut/conf/
-!apps/nut/conf/*.conf
 
 # Jackett definitions
 !apps/jackett/
@@ -128,7 +105,6 @@ config.env
 settings.conf
 **/secrets/
 *.json
-!apps/prowlarr-search/tntvillage.json
 *.json.gz
 *.log
 *.db
