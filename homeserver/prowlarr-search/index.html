@@ -313,7 +313,7 @@ async function scrapeMagnet(pageUrl) {
 
 async function scrapeMagnetFlare(pageUrl) {
   // Solo l'url dopo il ?: il JSON per FlareSolverr lo scrive nginx, che controlla l'host
-  const res = await fetch('/proxy/flare/?' + pageUrl);
+  const res = await fetch('/proxy/flare/?' + pageUrl.replace(/[\[\]|{}^`\\]/g, encodeURIComponent));
   if (!res.ok) throw new Error('FlareSolverr failed');
   const data = await res.json();
   if (data.status !== 'ok') throw new Error('FlareSolverr error');

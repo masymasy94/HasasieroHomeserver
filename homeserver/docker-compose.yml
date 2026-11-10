@@ -203,7 +203,7 @@ services:
     logging: *logging
     network_mode: host
     stop_grace_period: 60s
-    command: ["sh", "-c", "npm ls -g matterbridge-hass@1.6.1 >/dev/null 2>&1 || npm install -g --no-fund --no-audit --omit=dev matterbridge-hass@1.6.1 && exec matterbridge --docker --bridge --novirtual --mdnsinterface enp3s0 --bind 192.168.3.54"]
+    command: ["sh", "-c", "npm ls -g matterbridge-hass@1.6.1 >/dev/null 2>&1 || npm install -g --no-fund --no-audit --omit=dev matterbridge-hass@1.6.1 || echo plugin-non-installato; exec matterbridge --docker --bridge --novirtual --mdnsinterface enp3s0 --bind 192.168.3.54"]
     healthcheck:
       test: ["CMD", "mb_health", "http://192.168.3.54:8283/health"]
     volumes:

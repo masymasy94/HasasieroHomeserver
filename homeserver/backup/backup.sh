@@ -128,7 +128,7 @@ do_backup() {
   mapfile -t PATHS <<< "$list"
 
   # Le copie dei database stanno solo in restic: la cartella si cancella comunque.
-  trap 'restart_stopped; rm -rf "$DUMP_DIR"' EXIT
+  trap 'restart_stopped || true; rm -rf "$DUMP_DIR"' EXIT
   dump_dbs
   PATHS+=("$DUMP_DIR")
   for c in "${STOP_CONTAINERS[@]}"; do
