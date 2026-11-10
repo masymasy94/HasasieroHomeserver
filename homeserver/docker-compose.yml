@@ -1,3 +1,13 @@
+# Log dei container con un tetto: col json-file di default crescono senza limite.
+# 10 MB x 3 file = al massimo 30 MB per container (ognuno lo prende con `logging: *logging`).
+# Vale solo per i container ricreati dopo questa modifica.
+# https://docs.docker.com/engine/logging/drivers/json-file/
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 networks:
   home-net:
     name: home-net
@@ -13,6 +23,7 @@ services:
     image: jellyfin/jellyfin:12.4  # pin: aggiorna a mano, non piu' :latest
     container_name: jellyfin
     restart: unless-stopped
+    logging: *logging
     runtime: nvidia
     networks:
       - home-net
@@ -60,6 +71,7 @@ services:
     image: linuxserver/plex:latest
     container_name: plex
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     environment:
       - TZ=Europe/Rome
@@ -79,6 +91,7 @@ services:
     image: portainer/portainer-ce
     container_name: portainer
     restart: unless-stopped
+    logging: *logging
     networks:
       - home-net
     ports:
@@ -92,6 +105,7 @@ services:
     image: ghcr.io/gethomepage/homepage:latest
     container_name: homepage
     restart: unless-stopped
+    logging: *logging
     networks:
       - home-net
     ports:
@@ -107,6 +121,7 @@ services:
     image: louislam/uptime-kuma
     container_name: uptime-kuma
     restart: unless-stopped
+    logging: *logging
     networks:
       - home-net
     ports:
@@ -119,6 +134,7 @@ services:
     image: jc21/nginx-proxy-manager:latest
     container_name: nginx-proxy-manager
     restart: unless-stopped
+    logging: *logging
     networks:
       - home-net
     ports:
@@ -134,6 +150,7 @@ services:
     image: adguard/adguardhome
     container_name: adguardhome
     restart: unless-stopped
+    logging: *logging
     networks:
       - home-net
     ports:
@@ -160,6 +177,7 @@ services:
     image: ghcr.io/home-assistant/home-assistant:stable
     container_name: homeassistant
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     environment:
       - TZ=Europe/Rome
@@ -179,6 +197,7 @@ services:
     image: luligu/matterbridge:latest
     container_name: matterbridge
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     stop_grace_period: 60s
     command: ["matterbridge", "--docker", "--bridge", "--novirtual",
@@ -195,6 +214,7 @@ services:
     image: shawly/nut:latest
     container_name: nut
     restart: unless-stopped
+    logging: *logging
     networks:
       - home-net
     ports:
@@ -210,6 +230,7 @@ services:
     image: qmcgaw/gluetun
     container_name: gluetun
     restart: unless-stopped
+    logging: *logging
     cap_add:
       - NET_ADMIN
     devices:
@@ -257,6 +278,7 @@ services:
     image: linuxserver/prowlarr:latest
     container_name: prowlarr
     restart: unless-stopped
+    logging: *logging
     network_mode: "service:gluetun"
     depends_on:
       - gluetun
@@ -290,6 +312,7 @@ services:
     image: nginx:alpine
     container_name: prowlarr-search
     restart: unless-stopped
+    logging: *logging
     networks:
       - home-net
     ports:
@@ -307,6 +330,7 @@ services:
     image: linuxserver/jackett:latest
     container_name: jackett
     restart: unless-stopped
+    logging: *logging
     networks:
       - home-net
     ports:
@@ -329,9 +353,15 @@ services:
     image: flaresolverr-aggiornato
     container_name: flaresolverr
     restart: unless-stopped
+    logging: *logging
     network_mode: "service:gluetun"
     depends_on:
       - gluetun
+    # Chromium perde memoria con le sfide lunghe: a riposo FlareSolverr sta sui 300-500 MB
+    # e ogni sfida in parallelo ne aggiunge 100-200, quindi 2 GB lasciano spazio a varie
+    # sfide insieme e fermano una perdita prima che tocchi gli altri servizi. Oltre, il
+    # kernel uccide un processo del container (di solito Chromium: quella richiesta fallisce).
+    mem_limit: 2g
     environment:
       - TZ=Europe/Rome
       - LOG_LEVEL=info
@@ -353,6 +383,7 @@ services:
     image: nicolargo/glances:latest
     container_name: glances
     restart: unless-stopped
+    logging: *logging
     networks:
       - home-net
     ports:
@@ -369,6 +400,7 @@ services:
     image: linuxserver/qbittorrent:latest
     container_name: qbittorrent
     restart: unless-stopped
+    logging: *logging
     network_mode: "service:gluetun"
     depends_on:
       - gluetun
@@ -398,6 +430,7 @@ services:
     image: ghcr.io/masymasy94/hasasieroanimehub:latest
     container_name: animehub
     restart: unless-stopped
+    logging: *logging
     labels:
       - "com.centurylinklabs.watchtower.enable=false"
     networks:
@@ -427,6 +460,7 @@ services:
     image: ghcr.io/masymasy94/dnd5e-solo-dm:latest
     container_name: solo-dm
     restart: unless-stopped
+    logging: *logging
     labels:
       - "com.centurylinklabs.watchtower.enable=false"
     networks:
@@ -478,6 +512,7 @@ services:
     image: registry:2
     container_name: registry
     restart: unless-stopped
+    logging: *logging
     networks:
       - home-net
     ports:
@@ -493,6 +528,7 @@ services:
     build: ./github-runner
     container_name: github-runner
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     security_opt:
       - apparmor:unconfined
@@ -531,6 +567,7 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: cloudflared
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     command: tunnel --config /etc/cloudflared/config.yml run
     volumes:
@@ -562,6 +599,7 @@ services:
     build: ./secrets-ui
     container_name: secrets-ui
     restart: unless-stopped
+    logging: *logging
     networks:
       - secrets-ui-net
     ports:
@@ -602,6 +640,7 @@ services:
     image: containrrr/watchtower
     container_name: watchtower
     restart: unless-stopped
+    logging: *logging
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
@@ -621,6 +660,7 @@ services:
     image: willfarrell/autoheal:latest
     container_name: autoheal
     restart: unless-stopped
+    logging: *logging
     environment:
       - TZ=Europe/Rome
       - AUTOHEAL_CONTAINER_LABEL=autoheal
@@ -642,6 +682,7 @@ services:
     image: homeserver-secrets-ui:latest
     container_name: sentinella
     restart: unless-stopped
+    logging: *logging
     entrypoint: ["python3", "-u", "/home/masy/Desktop/docker/homeserver/sentinella/sentinella.py"]
     networks:
       - home-net
@@ -670,6 +711,7 @@ services:
     image: ghcr.io/servercontainers/samba:latest
     container_name: samba
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     environment:
       - TZ=Europe/Rome
