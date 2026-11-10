@@ -95,11 +95,22 @@ get_app_field() {
     grep "^${name}|" "$APPS_CONF" | cut -d'|' -f"$field"
 }
 
+# Every write to apps.conf runs as ( lock_apps_conf; <write> ): two scripts at once
+# could lose a line (one overwrote the other's ${APPS_CONF}.tmp). flock on the config
+# directory, not on apps.conf (each write replaces it with a new file) and not on a
+# lock file (a directory needs only read permission: root in the runner and masy
+# share it). The lock lasts until the subshell ends.
+lock_apps_conf() {
+    exec 9<"$(dirname "$APPS_CONF")"
+    flock -w 60 9 || fatal "apps.conf locked by another script for over 60 s"
+}
+
 update_app_field() {
     # update_app_field <app-name> <field-number> <new-value>
     local name="$1" field="$2" value="$3"
-    awk -v app="$name" -v f="$field" -v v="$value" 'BEGIN{FS=OFS="|"} $1==app {$f=v} {print}' \
-        "$APPS_CONF" > "${APPS_CONF}.tmp" && mv "${APPS_CONF}.tmp" "$APPS_CONF"
+    ( lock_apps_conf
+      awk -v app="$name" -v f="$field" -v v="$value" 'BEGIN{FS=OFS="|"} $1==app {$f=v} {print}' \
+        "$APPS_CONF" > "${APPS_CONF}.tmp" && mv "${APPS_CONF}.tmp" "$APPS_CONF" )
 }
 
 next_slot() {

@@ -35,6 +35,13 @@ header "Deploying: ${APP_NAME}"
 validate_app_name "$APP_NAME"
 require_yq
 
+# Two first deploys at once took the same slot (and IP): next_slot reads apps.conf and
+# the line is added only at Step 11. One deploy.sh at a time, lock held until exit
+# (flock on the deployments directory: see lock_apps_conf in lib/common.sh).
+mkdir -p "$DEPLOYMENTS_DIR"
+exec 8<"$DEPLOYMENTS_DIR"
+flock -w 1800 8 || fatal "Another deploy.sh has held the deploy lock for 30 min"
+
 if app_exists "$APP_NAME"; then
     fatal "App '${APP_NAME}' is already deployed. Use update.sh or remove.sh first."
 fi
@@ -323,7 +330,8 @@ if [[ "${IP_ALIAS_ENABLED:-false}" == "true" ]]; then
 fi
 
 # ─── Step 11: Record in registry ───
-echo "${APP_NAME}|${SLOT}|${REPO}|running|${NPM_HOST_ID}|${FRONTEND_SERVICE}|${FRONTEND_PORT}|${APP_IP}|${NPM_IP_HOST_ID}" >> "$APPS_CONF"
+( lock_apps_conf
+  echo "${APP_NAME}|${SLOT}|${REPO}|running|${NPM_HOST_ID}|${FRONTEND_SERVICE}|${FRONTEND_PORT}|${APP_IP}|${NPM_IP_HOST_ID}" >> "$APPS_CONF" )
 success "Registered in apps.conf"
 
 # ─── Step 12: Summary ───

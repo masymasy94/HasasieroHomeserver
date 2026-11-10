@@ -78,7 +78,7 @@ if [[ -d "$APP_DIR" ]]; then
 fi
 
 # ─── Remove from registry ───
-sed -i "/^${APP_NAME}|/d" "$APPS_CONF"
+( lock_apps_conf; sed -i "/^${APP_NAME}|/d" "$APPS_CONF" )
 success "Removed from registry"
 
 echo ""
