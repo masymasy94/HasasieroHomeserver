@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Backup con restic dei dati che non si ricreano: volumi docker (campagne e
 # personaggi di solo-dm, animehub), config di Home Assistant, certificati
-# di NPM, il vault sops e la chiave age che lo apre.
+# di NPM, il vault sops e la chiave age che lo apre, e i database delle app
+# (HasasieroGPT, Bookasiero, Shopping: SQLite; Hasasierofy: Postgres).
 #
 # NON ATTIVO: la destinazione la sceglie chi lo accende. Prima volta, da root:
 #   1. /etc/restic-homeserver.env (chmod 600), con dentro:
@@ -40,7 +41,23 @@ BIND_PATHS=(
 # Container fermati durante il backup (scrivono nei volumi qui sopra).
 read -r -a STOP_CONTAINERS <<< "${BACKUP_STOP:-solo-dm animehub homeassistant}"
 
+# Database delle app, percorsi presi dai loro compose (10/11). Copia coerente in
+# DUMP_DIR a container accesi: SQLite con .backup (API di backup online, in sola
+# lettura: niente checkpoint sul file dell'app), Postgres
+# con pg_dump. Un'app che sul server non c'e' da' solo un avviso; un dump che
+# fallisce non ferma il resto del backup, ma alla fine lo script esce con 1.
+DUMP_DIR="/var/tmp/homeserver-backup-db"   # fisso: viene svuotata con rm -rf
+SQLITE_DBS=(   # nome:file sull'host
+  "hasasierogpt:/mnt/hdd/hasasierogpt/app.db"
+  "bookasiero:/mnt/hdd/ebooks/bookasiero.db"
+  "hasasieroshopping:${DOCKER_ROOT}/apps/deployments/hasasieroshopping/data/prices.db"
+)
+PG_DBS=(       # container:utente:database
+  "hasasierofy-db-1:hasasierofy:hasasierofy"
+)
+
 log() { echo "[backup] $(date '+%F %T') $*"; }
+avviso() { echo "[backup] AVVISO: $*" >&2; }
 
 command -v restic >/dev/null || { echo "restic non installato (apt install restic)" >&2; exit 1; }
 
@@ -57,6 +74,45 @@ paths() {
   done
 }
 
+# Le app presenti sul server, una per riga: "sqlite <nome> <file>" o "pg <container> <utente> <db>".
+app_dbs() {
+  local e n f c u d
+  for e in "${SQLITE_DBS[@]}"; do
+    n=${e%%:*}; f=${e#*:}
+    if [[ -f "$f" ]]; then echo "sqlite $n $f"; else avviso "manca $f: $n non salvato"; fi
+  done
+  for e in "${PG_DBS[@]}"; do
+    IFS=: read -r c u d <<< "$e"
+    if [[ "$(docker inspect -f '{{.State.Running}}' "$c" 2>/dev/null)" == "true" ]]; then
+      echo "pg $c $u $d"
+    else
+      avviso "container $c non acceso: database $d non salvato"
+    fi
+  done
+}
+
+DUMP_FALLITI=0
+dump_dbs() {
+  local tipo a b c
+  rm -rf "$DUMP_DIR"
+  mkdir -m 700 "$DUMP_DIR"
+  while read -r tipo a b c; do
+    case "$tipo" in
+      sqlite)
+        if ! command -v sqlite3 >/dev/null; then
+          avviso "sqlite3 non installato (apt install sqlite3): $a non salvato"; DUMP_FALLITI=1
+        elif ! sqlite3 -readonly -cmd '.timeout 10000' "$b" ".backup '${DUMP_DIR}/${a}.db'"; then
+          avviso "copia di $b fallita"; rm -f "${DUMP_DIR}/${a}.db"; DUMP_FALLITI=1
+        fi ;;
+      pg)
+        if ! docker exec "$a" pg_dump -U "$b" -d "$c" > "${DUMP_DIR}/${c}.sql"; then
+          avviso "pg_dump di $c in $a fallito"; rm -f "${DUMP_DIR}/${c}.sql"; DUMP_FALLITI=1
+        fi ;;
+    esac
+  done < <(app_dbs)
+  log "database delle app: $(find "$DUMP_DIR" -type f | wc -l) copiati in ${DUMP_DIR}"
+}
+
 STOPPED=()
 restart_stopped() {
   # Rimette su solo quelli che erano accesi, anche se il backup e' fallito.
@@ -71,7 +127,10 @@ do_backup() {
   list=$(paths)
   mapfile -t PATHS <<< "$list"
 
-  trap restart_stopped EXIT
+  # Le copie dei database stanno solo in restic: la cartella si cancella comunque.
+  trap 'restart_stopped; rm -rf "$DUMP_DIR"' EXIT
+  dump_dbs
+  PATHS+=("$DUMP_DIR")
   for c in "${STOP_CONTAINERS[@]}"; do
     if [[ "$(docker inspect -f '{{.State.Running}}' "$c" 2>/dev/null)" == "true" ]]; then
       docker stop "$c" >/dev/null
@@ -87,13 +146,20 @@ do_backup() {
   restic forget --tag "$TAG" --keep-daily 7 --keep-weekly 4 --keep-monthly 6 --prune
   restic check
   log "fatto"
+  if ((DUMP_FALLITI)); then
+    echo "backup fatto, ma qualche database delle app non e' stato copiato (vedi AVVISO sopra)" >&2
+    exit 1
+  fi
 }
 
 # Prova di ripristino: l'ultimo snapshot in una cartella temporanea, poi ogni
-# percorso deve esserci e la chiave age deve essere identica all'originale.
+# percorso deve esserci e la chiave age deve essere identica all'originale. Per
+# ogni app presente oggi sul server il suo database deve esserci e aprirsi:
+# SQLite con integrity_check, il dump di Postgres completo fino all'ultima riga.
 do_prova() {
-  local list p
+  local list p dbs tipo a b c f
   list=$(paths)
+  dbs=$(app_dbs)
   # tmp globale: la trap EXIT gira dopo la fine della funzione.
   tmp=$(mktemp -d "${BACKUP_TMPDIR:-/var/tmp}/restic-prova.XXXXXX")
   trap 'rm -rf "$tmp"' EXIT
@@ -103,6 +169,21 @@ do_prova() {
   done <<< "$list"
   cmp -s "$AGE_KEY" "${tmp}${AGE_KEY}" \
     || { echo "PROVA FALLITA: keys.txt ripristinata diversa dall'originale" >&2; exit 1; }
+  while read -r tipo a b c; do
+    case "$tipo" in
+      sqlite)
+        f="${tmp}${DUMP_DIR}/${a}.db"
+        [[ -s "$f" ]] || { echo "PROVA FALLITA: manca il database di $a nel ripristino" >&2; exit 1; }
+        if command -v sqlite3 >/dev/null; then
+          [[ "$(sqlite3 "$f" 'PRAGMA integrity_check')" == "ok" ]] \
+            || { echo "PROVA FALLITA: il database di $a ripristinato non passa integrity_check" >&2; exit 1; }
+        fi ;;
+      pg)
+        f="${tmp}${DUMP_DIR}/${c}.sql"
+        grep -q '^-- PostgreSQL database dump complete' "$f" 2>/dev/null \
+          || { echo "PROVA FALLITA: dump di $c mancante o troncato nel ripristino" >&2; exit 1; } ;;
+    esac
+  done <<< "$dbs"
   log "prova di ripristino ok ($(du -sh "$tmp" | cut -f1) in ${tmp}, ora cancellata)"
 }
 
