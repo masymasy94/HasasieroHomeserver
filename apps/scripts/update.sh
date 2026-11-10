@@ -172,11 +172,21 @@ fi
 
 # ─── Safe deploy: build/pull → swap → health-check → rollback on failure ───
 
-# Tag current images for rollback (skip in registry mode — GHCR has all versions)
+# Tag current images for rollback. The service list comes from `config --services`
+# and is kept for the rollback: after its `down` there are no containers, and
+# `ps --services` returned nothing, so the rollback restarted the new (broken) images.
+ROLLBACK_SERVICES=$(docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" config --services 2>/dev/null || true)
+PREVIOUS_IMAGES=""
 if [[ "$USE_REGISTRY" != "true" ]]; then
-    for svc in $(docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" ps --services 2>/dev/null); do
+    for svc in $ROLLBACK_SERVICES; do
         docker tag "${APP_NAME}-${svc}" "${APP_NAME}-${svc}:rollback" 2>/dev/null || true
     done
+else
+    # Registry mode: without IMAGE_TAG the pull overwrites the same :latest, so the
+    # rollback compose would point at the new image. Save "<ref> <image id>" of what
+    # runs now and put the ref back on that id before the rollback `up`.
+    PREVIOUS_IMAGES=$(docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" ps -q 2>/dev/null \
+        | xargs -r docker inspect -f '{{.Config.Image}} {{.Image}}' 2>/dev/null || true)
 fi
 
 # Build or pull images — running containers are untouched
@@ -304,9 +314,15 @@ if [[ "$HEALTH_OK" != "true" ]]; then
     fi
 
     if [[ "$USE_REGISTRY" != "true" ]]; then
-        for svc in $(docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" ps --services 2>/dev/null || true); do
+        for svc in $ROLLBACK_SERVICES; do
             docker tag "${APP_NAME}-${svc}:rollback" "${APP_NAME}-${svc}:latest" 2>/dev/null || true
         done
+    else
+        while read -r ref id; do
+            if [[ -n "${id:-}" ]]; then
+                docker tag "$id" "$ref" 2>/dev/null || true
+            fi
+        done <<< "$PREVIOUS_IMAGES"
     fi
 
     docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" up -d --force-recreate --remove-orphans 2>&1 | while read -r line; do echo "  $line"; done || true
@@ -316,7 +332,7 @@ fi
 
 # Cleanup rollback artifacts on success
 if [[ "$USE_REGISTRY" != "true" ]]; then
-    for svc in $(docker compose -f "$DEPLOY_COMPOSE" -p "$APP_NAME" ps --services 2>/dev/null); do
+    for svc in $ROLLBACK_SERVICES; do
         docker rmi "${APP_NAME}-${svc}:rollback" 2>/dev/null || true
     done
 fi
@@ -344,8 +360,9 @@ for extra_compose in $(find "$APP_DIR" -path "*/frontend-deploy/docker-compose.y
     if [[ -n "$EXTRA_SVC" ]]; then
         yq -i ".services.\"${EXTRA_SVC}\".networks = [\"default\", \"${PROXY_NETWORK}\"]" "$EXTRA_DEPLOY"
     fi
-    # Tag current extra frontend images for rollback
-    for svc in $(docker compose -f "$EXTRA_DEPLOY" -p "${APP_NAME}-frontend" ps --services 2>/dev/null); do
+    # Tag current extra frontend images for rollback (list kept: see ROLLBACK_SERVICES)
+    EXTRA_SERVICES=$(docker compose -f "$EXTRA_DEPLOY" -p "${APP_NAME}-frontend" config --services 2>/dev/null || true)
+    for svc in $EXTRA_SERVICES; do
         docker tag "${APP_NAME}-frontend-${svc}" "${APP_NAME}-frontend-${svc}:rollback" 2>/dev/null || true
     done
 
@@ -404,7 +421,7 @@ for extra_compose in $(find "$APP_DIR" -path "*/frontend-deploy/docker-compose.y
             cp "${EXTRA_DEPLOY}.rollback" "$EXTRA_DEPLOY"
         fi
 
-        for svc in $(docker compose -f "$EXTRA_DEPLOY" -p "${APP_NAME}-frontend" ps --services 2>/dev/null || true); do
+        for svc in $EXTRA_SERVICES; do
             docker tag "${APP_NAME}-frontend-${svc}:rollback" "${APP_NAME}-frontend-${svc}:latest" 2>/dev/null || true
         done
 
@@ -415,7 +432,7 @@ for extra_compose in $(find "$APP_DIR" -path "*/frontend-deploy/docker-compose.y
     fi
 
     # Cleanup extra frontend rollback artifacts
-    for svc in $(docker compose -f "$EXTRA_DEPLOY" -p "${APP_NAME}-frontend" ps --services 2>/dev/null); do
+    for svc in $EXTRA_SERVICES; do
         docker rmi "${APP_NAME}-frontend-${svc}:rollback" 2>/dev/null || true
     done
     rm -f "${EXTRA_DEPLOY}.rollback"
