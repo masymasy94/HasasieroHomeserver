@@ -25,7 +25,7 @@ DISCHI = ["/", "/mnt/hdd"]  # spazio + montato; i NAS solo montati e leggibili
 NAS = ["/mnt/nas/Elements", "/mnt/nas/Seagate_Backup_Plus_Drive"]
 WEBHOOK = "http://192.168.3.54:8123/api/webhook/" + os.environ.get("SENTINELLA_WEBHOOK", "")
 SLSKD = "hasasierofy-slskd-1"
-TAILSCALE = "/var/run/tailscale/tailscaled.sock"
+TAILSCALE = "/host-run/tailscale/tailscaled.sock"  # /run montato intero, vedi compose
 
 
 def sh(*cmd, timeout=60, **kw):
